@@ -116,6 +116,40 @@ let
       grpc { endpoint = "0.0.0.0:4317" }
       http { endpoint = "0.0.0.0:4318" }
       output {
+        metrics = [otelcol.processor.transform.env.input]
+        logs    = [otelcol.processor.transform.env.input]
+        traces  = [otelcol.processor.transform.env.input]
+      }
+    }
+
+    // Stamp every signal's RESOURCE with the deployment environment (single-host
+    // homelab → value is the homeserver username). Set both the new semconv key
+    // and the legacy one. (Alloy v1.14 has no otelcol.processor.resource, so use
+    // transform with the resource context.)
+    otelcol.processor.transform "env" {
+      error_mode = "ignore"
+      trace_statements {
+        context    = "resource"
+        statements = [
+          `set(attributes["deployment.environment.name"], "homeserver")`,
+          `set(attributes["deployment.environment"], "homeserver")`,
+        ]
+      }
+      metric_statements {
+        context    = "resource"
+        statements = [
+          `set(attributes["deployment.environment.name"], "homeserver")`,
+          `set(attributes["deployment.environment"], "homeserver")`,
+        ]
+      }
+      log_statements {
+        context    = "resource"
+        statements = [
+          `set(attributes["deployment.environment.name"], "homeserver")`,
+          `set(attributes["deployment.environment"], "homeserver")`,
+        ]
+      }
+      output {
         metrics = [otelcol.processor.batch.default.input]
         logs    = [otelcol.processor.batch.default.input]
         traces  = [otelcol.processor.batch.default.input]
@@ -135,6 +169,11 @@ let
       forward_to = [prometheus.remote_write.default.receiver]
     }
     prometheus.remote_write "default" {
+      // metric-label form of deployment.environment.name (dots → underscores).
+      // Covers both host-scraped and OTLP-converted metrics uniformly.
+      external_labels = {
+        deployment_environment_name = "homeserver",
+      }
       endpoint { url = "http://127.0.0.1:${toString promPort}/api/v1/write" }
     }
 
@@ -160,9 +199,44 @@ let
       scrape_interval = "15s"
     }
 
+    // Rootless quadlet containers run as systemd *user* units under srv and log
+    // to the journal (Quadlet's default passthrough driver), so reading the whole
+    // journal already captures podman container output. Relabel surfaces the unit
+    // / container name so container logs are queryable per service in Loki.
+    loki.relabel "journal" {
+      forward_to = []
+      // system unit (host services)
+      rule {
+        source_labels = ["__journal__systemd_unit"]
+        target_label  = "unit"
+      }
+      // user unit (rootless containers) overrides when present
+      rule {
+        source_labels = ["__journal__systemd_user_unit"]
+        regex         = "(.+)"
+        target_label  = "unit"
+      }
+      // podman journald driver, if enabled on a container
+      rule {
+        source_labels = ["__journal_container_name"]
+        regex         = "(.+)"
+        target_label  = "container"
+      }
+      // service.name = the unit name (copy the resolved `unit` label).
+      rule {
+        source_labels = ["unit"]
+        target_label  = "service_name"
+      }
+    }
+
     loki.source.journal "host" {
-      forward_to = [loki.write.default.receiver]
-      labels     = { job = "systemd-journal", host = "homeserver" }
+      forward_to    = [loki.write.default.receiver]
+      relabel_rules = loki.relabel.journal.rules
+      labels        = {
+        job                         = "systemd-journal",
+        host                        = "homeserver",
+        deployment_environment_name = "homeserver",
+      }
     }
   '';
 in
