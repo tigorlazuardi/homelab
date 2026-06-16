@@ -142,6 +142,20 @@ let
           `set(attributes["deployment.environment"], "homeserver")`,
         ]
       }
+      // Promote service.name + deployment.environment[.name] onto each metric
+      // DATAPOINT — otelcol.exporter.prometheus turns datapoint attributes into
+      // labels (resource attributes only land in target_info, forcing a join).
+      // This is the equivalent of Mimir's promote_resource_attributes, but
+      // selective (only the two keys we want as labels). Runs after the resource
+      // block above, so the env values are already set.
+      metric_statements {
+        context    = "datapoint"
+        statements = [
+          `set(attributes["service.name"], resource.attributes["service.name"]) where resource.attributes["service.name"] != nil`,
+          `set(attributes["deployment.environment.name"], resource.attributes["deployment.environment.name"])`,
+          `set(attributes["deployment.environment"], resource.attributes["deployment.environment"])`,
+        ]
+      }
       log_statements {
         context    = "resource"
         statements = [
