@@ -8,6 +8,7 @@
   homelab.containers.jdownloader = {
     image = "docker.io/jlesage/jdownloader-2:latest";
     port = 5800;
+    auth = true;
     userns = null;
     harden = false;
     volumes = [
@@ -26,5 +27,4 @@
       proxy_connect_timeout 86400s;
     '';
   };
-  # TODO(auth wave): re-add auth gate.
 }

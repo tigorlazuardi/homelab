@@ -4,6 +4,7 @@
     image = "ghcr.io/suwayomi/suwayomi-server:stable";
     port = 4567;
     subdomain = "manga";
+    auth = true;
     uid = 1000;
     volumes = [
       "/srv/data/state/suwayomi:/home/suwayomi/.local/share/Tachidesk"
@@ -25,5 +26,4 @@
       "d /srv/data/media/manga 2775 srv media -"
     ];
   };
-  # TODO(auth wave): re-add auth gate (old config used tinyauth).
 }

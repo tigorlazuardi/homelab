@@ -8,6 +8,8 @@
     image = "docker.io/linuxserver/qbittorrent:latest";
     port = 8080;
     hostPort = 8083; # host 8080 is searxng
+    auth = true;
+    authLocations = [ "/" ]; # gate the UI only; leave the API reachable
     uid = 1000;
     harden = false; # linuxserver s6 needs CHOWN/SETUID/SETGID
     volumes = [
@@ -32,6 +34,5 @@
 
   networking.firewall.allowedTCPPorts = [ 6881 ];
   networking.firewall.allowedUDPPorts = [ 6881 ];
-  # TODO(auth wave): gate the web UI; it stays loopback-only meanwhile.
   # TODO(cutover): add CPU/IO resource caps via the container's serviceConfig.
 }

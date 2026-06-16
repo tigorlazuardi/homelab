@@ -50,6 +50,18 @@ home-manager.users.srv = { config, ... }:
   };
 ```
 
+## Gating a vhost behind auth (tinyauth forward-auth)
+
+`services/auth.nix` runs tinyauth → dex → pocket-id and declares a per-vhost
+`tinyauth` option. Two ways to gate:
+
+- **Helper service:** `auth = true;` (whole vhost) or `auth = true; authLocations = [ "/" ];`
+  (gate the UI, leave APIs/webhooks open — qbittorrent does this).
+- **Hand-written vhost:** `services.nginx.virtualHosts.<host>.tinyauth.enable = true;`
+  (adguard, wg download page).
+
+Anything that serves secrets or an admin UI on a public vhost MUST be gated.
+
 ## Rules of thumb
 
 - **File ownership (the keep-id rule).** Set `uid` = the uid the image runs as
@@ -78,7 +90,8 @@ home-manager.users.srv = { config, ... }:
 | 5173 | wallrus  | | 8083 | qbittorrent (UI; 6881 BT) |
 | 5800 | jdownloader | | 8084 | infisical |
 | 8000 | paperless | | 8191 | flaresolverr |
-| 9000 | webhook (native) | | | |
+| 9000 | webhook (native) | | 1411 | pocket-id |
+| 3001 | tinyauth (3000=adguard LAN) | | 5556 | dex |
 
 ## Before committing
 

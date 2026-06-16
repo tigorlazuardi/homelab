@@ -76,6 +76,11 @@ in
     allowedUDPPorts = [ 53 ];
   };
 
-  # TODO(auth wave): public adguard.tigor.web.id vhost behind auth. UI reachable
-  # on the LAN at 192.168.100.5:3000 meanwhile (set an AdGuard user/password).
+  # Public UI behind tinyauth forward-auth. AdGuard binds its LAN address (not
+  # loopback), so proxy there. Set an AdGuard user/password too — defence in depth.
+  services.nginx.virtualHosts."adguard.tigor.web.id" = {
+    forceSSL = true;
+    tinyauth.enable = true;
+    locations."/".proxyPass = "http://${serverIP}:3000";
+  };
 }

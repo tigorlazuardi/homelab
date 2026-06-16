@@ -6,6 +6,8 @@
     ./wireguard.nix
     ./samba.nix
     ./smartd.nix
+    # auth (forward-auth proxy + IdP; declares the per-vhost tinyauth option)
+    ./auth.nix
     # rootless app services
     ./flaresolverr.nix
     ./searxng.nix

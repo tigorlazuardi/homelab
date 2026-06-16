@@ -103,6 +103,16 @@ in
               type = types.lines;
               default = "";
             };
+            auth = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Gate the vhost behind tinyauth forward-auth (see services/auth.nix). Whole vhost unless authLocations set.";
+            };
+            authLocations = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              description = "Restrict the auth gate to these locations (e.g. [ \"/\" ] to leave APIs open).";
+            };
             tmpfiles = mkOption {
               type = types.listOf types.str;
               default = [ ];
@@ -145,6 +155,10 @@ in
       _: c:
       nameValuePair "${c.subdomain}.${domain}" {
         forceSSL = true;
+        tinyauth = {
+          enable = c.auth;
+          locations = c.authLocations;
+        };
         locations."/" = {
           proxyPass = "http://127.0.0.1:${toString c.hostPort}";
           extraConfig = c.nginx.extraConfig;

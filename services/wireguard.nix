@@ -112,6 +112,63 @@ in
     }"
   ) clients;
 
-  # TODO(auth wave): restore wg.tigor.web.id config-download page BEHIND AUTH.
-  # It serves client private keys, so it must never be unauthenticated.
+  # Config-download page — serves client private keys, so it is gated behind
+  # tinyauth forward-auth (never unauthenticated).
+  services.nginx.virtualHosts."wg.tigor.web.id" =
+    let
+      configDir = "/var/lib/wireguard-configs";
+      clientLinks = lib.concatMapStringsSep "\n" (client: ''
+        <div class="client">
+          <h2>${client.name}</h2>
+          <div class="qr" id="qr-${client.name}"></div>
+          <a href="/configs/${client.name}.conf" download="${client.name}.conf">Download Config</a>
+        </div>
+      '') clients;
+      webroot = pkgs.writeTextDir "index.html" ''
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>WireGuard Configs</title>
+          <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a2e; color: #eee; }
+            h1 { color: #88d498; }
+            .client { background: #16213e; border-radius: 8px; padding: 16px; margin: 16px 0; }
+            .qr { background: #fff; display: inline-block; padding: 8px; border-radius: 4px; }
+            a { display: inline-block; margin-top: 8px; padding: 8px 16px; background: #88d498; color: #16213e; text-decoration: none; border-radius: 4px; font-weight: 600; }
+            a:hover { background: #6ab57a; }
+          </style>
+        </head>
+        <body>
+          <h1>WireGuard Client Configs</h1>
+          ${clientLinks}
+          <script>
+            async function loadQR(name) {
+              const res = await fetch('/configs/' + name + '.conf');
+              const text = await res.text();
+              const qr = qrcode(0, 'M');
+              qr.addData(text);
+              qr.make();
+              document.getElementById('qr-' + name).innerHTML = qr.createImgTag(4);
+            }
+            ${lib.concatMapStringsSep "\n" (client: "loadQR('${client.name}');") clients}
+          </script>
+        </body>
+        </html>
+      '';
+    in
+    {
+      forceSSL = true;
+      tinyauth.enable = true;
+      root = webroot;
+      locations = {
+        "/".index = "index.html";
+        "/configs/" = {
+          alias = "${configDir}/";
+          extraConfig = "default_type application/octet-stream;";
+        };
+      };
+    };
 }
