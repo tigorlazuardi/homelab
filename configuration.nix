@@ -14,6 +14,7 @@
     ./modules/ssh.nix
     ./modules/users.nix
     ./modules/podman.nix
+    ./modules/quadlet-service.nix
 
     # Shell / tooling
     ./modules/cli.nix
