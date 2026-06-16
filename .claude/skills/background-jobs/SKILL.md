@@ -1,6 +1,6 @@
 ---
 name: background-jobs
-description: Use when starting a long-running shell task (rsync, large copies, backups, restores, builds, downloads) that must outlive the agent turn/session and be pollable later — run it as a named systemd-run --user transient unit instead of nohup/&, so the host's user manager owns it and status survives across sessions and context compaction.
+description: Use when starting a long-running shell task (rsync, large copies, backups, restores, builds, downloads) that must outlive the agent turn/session and be pollable later — run it as a named `claude-`-prefixed systemd-run --user transient unit instead of nohup/&, so the host's user manager owns it and status survives across sessions and context compaction. Includes an optional Telegram notify-on-completion bridge (systemd cannot push back into Claude directly).
 ---
 
 # Long-running background jobs (systemd-run --user)
@@ -123,6 +123,69 @@ sudo systemd-run --unit=claude-<job-name> --property=RemainAfterExit=yes -- <com
 
 Prefer `--user` whenever the files are readable/writable as the normal user —
 it needs no password and matches how the rootless services run.
+
+## Notify when done (Telegram bridge)
+
+systemd **cannot** push back into the Claude Code session — the agent loop has no
+inbound socket. What it can do is notify the **human** when a job finishes, who
+then re-engages Claude. Reuse the existing Telegram bot (the same one smartd +
+Grafana alerts use).
+
+The clean way is to **wrap the job command** so it fires a Telegram message on
+exit with the result — no second unit needed. Define a helper, then call it:
+
+```bash
+# reads creds, sends one message ($1)
+claude_notify() {
+  local tok chat
+  if [ -r /run/secrets/observability/telegram_bot_token ]; then
+    # post-switch: sops-nix already materialised srv-owned plaintext
+    tok=$(cat /run/secrets/observability/telegram_bot_token)
+    chat=$(cat /run/secrets/observability/telegram_chat_id)
+  else
+    # pre-switch / ad-hoc: decrypt from sops (needs /opt/age-key.txt)
+    local y; y=$(sops -d ~/homelab/secrets/smartd.yaml)
+    tok=$(printf '%s\n' "$y" | sed -n 's/^telegram_bot_token: *//p' | tr -d '"')
+    chat=$(printf '%s\n' "$y" | sed -n 's/^telegram_chat_id: *//p' | tr -d '"')
+  fi
+  curl -s "https://api.telegram.org/bot${tok}/sendMessage" \
+    --data-urlencode "chat_id=${chat}" --data-urlencode "text=$1" >/dev/null
+}
+```
+
+Launch the job wrapped so it notifies on both success and failure:
+
+```bash
+systemd-run --user --unit=claude-cutover-rsync-arr \
+  --description="rsync arr media nas->wolf" \
+  --property=RemainAfterExit=yes \
+  -- bash -lc '
+    source ~/homelab/.claude/skills/background-jobs/notify.sh   # or paste claude_notify here
+    rsync -rlptDH --info=progress2 SRC/ DST/
+    rc=$?
+    if [ $rc -eq 0 ]; then claude_notify "✅ claude-cutover-rsync-arr done"; \
+    else claude_notify "❌ claude-cutover-rsync-arr FAILED (rc=$rc)"; fi
+    exit $rc
+  '
+```
+
+Alternative without wrapping the command — a separate handler unit via transient
+properties (handler must be its own unit, so the inline wrap above is usually
+simpler):
+
+```bash
+systemd-run --user --unit=claude-<job> --property=RemainAfterExit=yes \
+  --property=OnFailure=claude-notify-fail@%n.service -- <command>
+```
+
+Caveats:
+- This notifies **you**, not Claude. To auto-resume Claude cross-session, pair it
+  with a `cron` job (`CronCreate`) that polls `systemctl --user is-active` and
+  continues — see the model-routing note; systemd alone can't.
+- The bot token lands in the `curl` URL → briefly visible in `ps` for that one
+  call. Acceptable on a private host; do not use this pattern to send secrets.
+- Decrypting `smartd.yaml` is a secret read — fine here because notification is
+  the explicit purpose, but never decrypt secrets for unrelated reasons.
 
 ## Why not `nohup cmd &`
 
