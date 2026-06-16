@@ -8,6 +8,8 @@
     ./smartd.nix
     # auth (forward-auth proxy + IdP; declares the per-vhost tinyauth option)
     ./auth.nix
+    # observability (native Alloy gateway + Prometheus/Loki/Tempo/Grafana)
+    ./observability.nix
     # rootless app services
     ./flaresolverr.nix
     ./searxng.nix
