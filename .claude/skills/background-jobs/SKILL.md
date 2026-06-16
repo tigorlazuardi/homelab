@@ -28,7 +28,7 @@ On this homeserver `homeserver` already has `Linger=yes`.
 
 ```bash
 systemd-run --user \
-  --unit=<job-name> \
+  --unit=claude-<job-name> \
   --description="<what it does>" \
   --property=RemainAfterExit=yes \
   -- <command> [args...]
