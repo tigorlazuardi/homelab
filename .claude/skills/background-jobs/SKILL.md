@@ -34,9 +34,10 @@ systemd-run --user \
   -- <command> [args...]
 ```
 
-- `--unit=<job-name>` — stable, descriptive name (e.g. `cutover-rsync-arr`). This
-  is the handle every later poll uses; pick something a future session will
-  recognise.
+- `--unit=<job-name>` — stable, descriptive name. **Always prefix with `claude-`**
+  (e.g. `claude-cutover-rsync-arr`) so it is obvious at a glance the unit was
+  created by Claude, not by a NixOS module or the operator. This is the handle
+  every later poll uses; pick something a future session will recognise.
 - `--property=RemainAfterExit=yes` — **the key flag**. After the command finishes
   the unit stays `active (exited)` instead of being garbage-collected, so its
   result is still pollable cross-session. Do NOT pass `--collect` (that auto-GCs
@@ -48,7 +49,7 @@ systemd-run --user \
 Example (the cutover media copy):
 
 ```bash
-systemd-run --user --unit=cutover-rsync-arr \
+systemd-run --user --unit=claude-cutover-rsync-arr \
   --description="rsync arr media+torrents nas->wolf (hardlinks)" \
   --property=RemainAfterExit=yes \
   -- rsync -rlptDH --info=progress2,stats2 --no-inc-recursive \
@@ -57,9 +58,11 @@ systemd-run --user --unit=cutover-rsync-arr \
 
 ## Poll it (any later session)
 
+All unit names below are written `claude-<job-name>` to reflect the prefix rule.
+
 ```bash
 # one-line state
-systemctl --user show -p ActiveState,SubState,ExecMainStatus,ExecMainCode <job-name>
+systemctl --user show -p ActiveState,SubState,ExecMainStatus,ExecMainCode claude-<job-name>
 ```
 
 Interpret:
@@ -74,9 +77,15 @@ Interpret:
 means "exited normally" (CLD_EXITED) — read `ExecMainStatus` for the real result.
 
 ```bash
-systemctl --user status <job-name> --no-pager        # human summary + recent log
-journalctl --user -u <job-name> -n 30 --no-pager     # last 30 log lines
-journalctl --user -u <job-name> -f                   # live follow
+systemctl --user status claude-<job-name> --no-pager        # human summary + recent log
+journalctl --user -u claude-<job-name> -n 30 --no-pager     # last 30 log lines
+journalctl --user -u claude-<job-name> -f                   # live follow
+```
+
+List every Claude-created job at a glance:
+
+```bash
+systemctl --user list-units 'claude-*' --all
 ```
 
 ## Progress for rsync-style tools
@@ -85,7 +94,7 @@ The journal keeps full lines but `--info=progress2` emits `\r`-updated lines.
 For a clean single-line progress read, also tee to a file:
 
 ```bash
-systemd-run --user --unit=<job> --property=RemainAfterExit=yes \
+systemd-run --user --unit=claude-<job> --property=RemainAfterExit=yes \
   -- bash -c 'rsync -rlptDH --info=progress2 SRC/ DST/ > /path/job.log 2>&1'
 # then:
 tail -c 200 /path/job.log | tr '\r' '\n' | tail -1
@@ -94,8 +103,8 @@ tail -c 200 /path/job.log | tr '\r' '\n' | tail -1
 ## Clean up (only when you no longer need the result)
 
 ```bash
-systemctl --user stop <job-name>          # transient unit → removed entirely
-systemctl --user reset-failed <job-name>  # if it ended failed, clears it
+systemctl --user stop claude-<job-name>          # transient unit → removed entirely
+systemctl --user reset-failed claude-<job-name>  # if it ended failed, clears it
 ```
 
 Leave the unit in place while the result still matters — that is the whole point
@@ -108,8 +117,8 @@ Leave the unit in place while the result still matters — that is the whole poi
 keep the same flags:
 
 ```bash
-sudo systemd-run --unit=<job-name> --property=RemainAfterExit=yes -- <command>
-# poll without --user: systemctl status / journalctl -u <job-name>
+sudo systemd-run --unit=claude-<job-name> --property=RemainAfterExit=yes -- <command>
+# poll without --user: systemctl status / journalctl -u claude-<job-name>
 ```
 
 Prefer `--user` whenever the files are readable/writable as the normal user —
