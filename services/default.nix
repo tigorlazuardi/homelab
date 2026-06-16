@@ -11,6 +11,11 @@
     # observability (native Alloy gateway + Prometheus/Loki/Tempo/Grafana)
     ./observability.nix
     # rootless app services
+    # *arr media-automation stack
+    ./prowlarr.nix
+    ./sonarr.nix
+    ./radarr.nix
+    ./bazarr.nix
     ./flaresolverr.nix
     ./searxng.nix
     ./suwayomi.nix
