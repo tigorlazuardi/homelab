@@ -1,0 +1,18 @@
+# nix build outputs
+result
+result-*
+
+# decrypted secrets — never commit
+*.decrypted
+*.decrypted.*
+*.dec
+/secrets/*.plain
+/secrets/*.dec
+
+# age private keys — never commit
+age-key.txt
+*.age.key
+keys.txt
+
+# direnv
+.direnv/
