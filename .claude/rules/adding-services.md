@@ -95,6 +95,9 @@ Anything that serves secrets or an admin UI on a public vhost MUST be gated.
 | 9090 | prometheus | | 3100 | loki |
 | 3200 | tempo (4319→OTLP) | | 3300 | grafana |
 | 4317/4318 | alloy OTLP (native gateway) | | 2283 | immich (server) |
+| 8989 | sonarr | | 8990 | sonarr-anime |
+| 7878 | radarr | | 9696 | prowlarr |
+| 6767 | bazarr | | | |
 
 ## Before committing
 

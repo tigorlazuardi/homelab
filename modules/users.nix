@@ -67,8 +67,11 @@
     "d /var/mnt/wolf/media 2775 srv media -"
     "d /var/mnt/wolf/media/tv 2775 srv media -"
     "d /var/mnt/wolf/media/movies 2775 srv media -"
+    "d /var/mnt/wolf/media/anime 2775 srv media -"
     "d /var/mnt/wolf/media/music 2775 srv media -"
-    "d /var/mnt/wolf/downloads 2775 srv media -"
+    # arr download dir — named `torrents` to match the old deploy's container
+    # path (/data/torrents) so carried qbit/arr configs + seeding resume untouched.
+    "d /var/mnt/wolf/torrents 2775 srv media -"
     # nas (DYING HDD) — disposable downloads only (download-and-delete). Nothing
     # irreplaceable lives here; safe to lose when the disk fails.
     "d /var/mnt/nas/downloads 2775 srv media -"

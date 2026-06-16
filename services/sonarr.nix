@@ -1,5 +1,5 @@
 # Sonarr — TV series management. linuxserver s6 image (harden=false + PUID/PGID).
-# Mounts the whole /var/mnt/wolf tree as /data so downloads (/data/downloads) and the
+# Mounts the whole /var/mnt/wolf tree as /data so downloads (/data/torrents) and the
 # library (/data/media/tv) share one filesystem → atomic moves + hardlinks.
 {
   homelab.containers.sonarr = {
@@ -20,7 +20,7 @@
     };
     tmpfiles = [ "d /var/mnt/state/sonarr 0750 srv media -" ];
   };
-  # TODO(cutover): qbittorrent saves to /downloads (its mount); Sonarr sees the
-  # same files at /data/downloads. Either add a Remote Path Mapping in Sonarr
-  # (/downloads → /data/downloads) or repoint qbittorrent's volume to /data.
+  # qbittorrent saves arr categories to /data/torrents (wolf); Sonarr sees the
+  # same files at /data/torrents and hardlinks imports into /data/media/tv. Paths
+  # match the old deploy → carried configs need no Remote Path Mapping.
 }

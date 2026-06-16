@@ -14,6 +14,7 @@
     # *arr media-automation stack
     ./prowlarr.nix
     ./sonarr.nix
+    ./sonarr-anime.nix
     ./radarr.nix
     ./bazarr.nix
     ./flaresolverr.nix

@@ -17,8 +17,10 @@
       # Personal/manual downloads → nas (disposable, dying disk).
       "/var/mnt/nas/downloads:/downloads"
       # arr-category downloads → wolf, SAME container path the *arr stack sees
-      # (/data/downloads) so imports hardlink into /data/media on wolf.
-      "/var/mnt/wolf/downloads:/data/downloads"
+      # (/data/torrents) so imports hardlink into /data/media on wolf. Path name
+      # matches the OLD deploy so carried qbit fastresume + arr configs need no
+      # edits and seeding resumes in place.
+      "/var/mnt/wolf/torrents:/data/torrents"
       "${pkgs.vuetorrent}/share/vuetorrent:/webui/vuetorrent:ro"
     ];
     environments = {
@@ -39,7 +41,7 @@
   networking.firewall.allowedTCPPorts = [ 6881 ];
   networking.firewall.allowedUDPPorts = [ 6881 ];
   # TODO(cutover): add CPU/IO resource caps via the container's serviceConfig.
-  # TODO(cutover): in the qBittorrent UI set the default save path to /downloads
-  # (nas) and category save paths sonarr/radarr → /data/downloads (wolf) so arr
-  # imports hardlink. Sonarr/Radarr download-client category must match.
+  # Carried qbit config already has: default save /downloads (nas) and category
+  # save paths (sonarr/radarr/anime) → /data/torrents (wolf). Paths match the old
+  # deploy, so no UI changes needed at cutover.
 }
