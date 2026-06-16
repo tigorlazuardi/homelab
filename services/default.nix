@@ -17,6 +17,8 @@
     ./sonarr-anime.nix
     ./radarr.nix
     ./bazarr.nix
+    ./recyclarr.nix
+    ./jellyfin.nix
     ./flaresolverr.nix
     ./searxng.nix
     ./suwayomi.nix

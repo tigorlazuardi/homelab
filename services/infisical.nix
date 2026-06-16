@@ -93,9 +93,8 @@ in
     };
   };
 
-  # TODO(cutover): DB_CONNECTION_URI inside infisical.env points at the OLD
-  # postgres IP (10.88.7.1). Update its host to `infisical-postgres` (decrypt with
-  # `sops`, needs your permission). Backend crash-loops until then.
+  # DB_CONNECTION_URI host updated to `infisical-postgres` (was old IP 10.88.7.1);
+  # password already matches POSTGRES_PASSWORD. Fresh DB → state/infisical/postgres.
   # TODO(cutover): backend has no explicit ordering on pg/redis — relies on
   # restart-on-failure. Add unit ordering if startup is flaky.
 }

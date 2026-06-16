@@ -35,7 +35,9 @@ the next free uid at switch (record it: `id srv`).
 | bazarr | `nas/.../servarr/bazarr` (6.7M) | `state/bazarr` | copy + chown |
 | qbittorrent | `nas/.../servarr/qbittorrent` (7.3M) | `state/qbittorrent` | copy + chown |
 | navidrome | `state/navidrome` (98M) | `state/navidrome` | in-place chown |
-| suwayomi | `state/suwayomi` (146M) + `wolf/suwayomi` (42G manga) | `state/suwayomi` + `wolf/media/manga` | chown + rename |
+| suwayomi | `state/suwayomi` (146M) + `wolf/suwayomi/downloads` (42G manga) | `state/suwayomi` + `wolf/media/manga` | chown + **mv (same fs)**. `nas/tachidesk` dropped (suwayomi canonical). |
+| jellyfin | `state/jellyfin` (550M config+cache) | `state/jellyfin` | in-place chown; library `wolf/media:ro` |
+| recyclarr | `nas/.../servarr/recyclarr` (78M) | `state/recyclarr` | copy + chown; fix base_url to host.containers.internal |
 | ytptube | `state/ytptube` (48M) + `wolf/mediaserver/ytptube` (1.2T) | `state/ytptube` + `wolf/media/youtube` | chown + **rename (same fs, instant)** |
 | searxng | `state/searxng` (152K) | `state/searxng/{config,data,valkey}` | restructure + chown |
 | jdownloader | `state/jdownloader` (115M) | `state/jdownloader` | chown |
@@ -104,6 +106,7 @@ Hours of IO. Re-runnable (incremental) for the switch-day delta.
    mv /var/mnt/wolf/_arrstage/torrents     /var/mnt/wolf/torrents
    mv /var/mnt/wolf/mediaserver/ytptube    /var/mnt/wolf/media/youtube   # 1.2T instant
    mv /var/mnt/wolf/_musicstage            /var/mnt/wolf/media/music
+   mv /var/mnt/wolf/suwayomi/downloads/*   /var/mnt/wolf/media/manga/    # manga (suwayomi canonical)
    ```
 4. **Copy arr/qbit + other configs** into `state/<app>` (rsync from servarr/*).
 5. **Split paperless**: data/consume/redis→`state/paperless/*`, media/export→`fenrir/paperless/*`.
@@ -134,9 +137,16 @@ old configs until immich external-lib import verified.
       `sops secrets/infisical.env` edit (EXPLICIT user permission required).
 - [ ] adguard, wireguard, samba, navidrome, suwayomi, ytptube, paperless reachable.
 
-## Open items needing operator input at switch time
+## Open items — RESOLVED (2026-06-17)
 
-- `nas/tachidesk` (26G) vs `wolf/suwayomi` (42G) manga overlap — which is canonical?
-- `recyclarr` re-add? (not ported)
-- jellyfin re-add? (old config had it; new does not)
-- infisical DB host edit (encrypted secret — needs explicit permission).
+- ✅ manga: **suwayomi canonical** (`wolf/suwayomi/downloads` → `wolf/media/manga`);
+  `nas/tachidesk` dropped.
+- ✅ recyclarr: **re-added** (`services/recyclarr.nix`, cron mode, `state/recyclarr`).
+- ✅ jellyfin: **re-added** (`services/jellyfin.nix`, `wolf/media:ro`, renderD128).
+- ✅ infisical DB host: env `DB_CONNECTION_URI` host fixed to `infisical-postgres`
+  (was `10.88.7.1`); password matches POSTGRES_PASSWORD; fresh DB.
+
+### Remaining runtime TODOs (post-switch UI/file, not blocking switch)
+
+- recyclarr.yml `base_url` → `http://host.containers.internal:{8989,7878,8990}` + API keys.
+- jellyfin: re-point libraries to `/media/{tv,movies,anime,music}` (was `/media/nas`,`/media/wolf`).
