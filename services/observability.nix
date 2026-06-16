@@ -152,6 +152,7 @@ let
         context    = "datapoint"
         statements = [
           `set(attributes["service.name"], resource.attributes["service.name"]) where resource.attributes["service.name"] != nil`,
+          `set(attributes["service.namespace"], resource.attributes["service.namespace"]) where resource.attributes["service.namespace"] != nil`,
           `set(attributes["deployment.environment.name"], resource.attributes["deployment.environment.name"])`,
           `set(attributes["deployment.environment"], resource.attributes["deployment.environment"])`,
         ]
