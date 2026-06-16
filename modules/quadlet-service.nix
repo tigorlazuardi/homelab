@@ -63,6 +63,11 @@ in
               type = types.nullOr types.int;
               default = config.uid;
             };
+            user = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "Force the container process user (e.g. \"1000:1000\") for images that default to root.";
+            };
             userns = mkOption {
               type = types.nullOr types.str;
               default = if config.uid != null then "keep-id:uid=${toString config.uid},gid=${toString config.gid}" else "keep-id";
@@ -123,6 +128,7 @@ in
               ;
           }
           (optionalAttrs (c.userns != null) { inherit (c) userns; })
+          (optionalAttrs (c.user != null) { inherit (c) user; })
           (optionalAttrs (c.hostPort != null && c.port != null) {
             publishPorts = [ "127.0.0.1:${toString c.hostPort}:${toString c.port}" ];
           })
