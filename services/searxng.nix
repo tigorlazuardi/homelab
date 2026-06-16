@@ -11,8 +11,10 @@
       virtualisation.quadlet = {
         networks.searxng = { };
 
+        # DISABLED pending CPU investigation (old deploy's searxng was CPU-hungry).
+        # Config + data migration kept; flip autoStart back to true to re-enable.
         containers.searxng = {
-          autoStart = true;
+          autoStart = false;
           containerConfig = {
             image = "docker.io/searxng/searxng:latest";
             publishPorts = [ "127.0.0.1:8080:8080" ];
@@ -35,7 +37,7 @@
         };
 
         containers.searxng-valkey = {
-          autoStart = true;
+          autoStart = false; # paired with searxng (disabled)
           containerConfig = {
             image = "docker.io/valkey/valkey:9-alpine";
             networks = [ networks.searxng.ref ];
