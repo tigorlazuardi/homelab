@@ -9,5 +9,8 @@
     ./navidrome.nix
     ./qbittorrent.nix
     ./paperless-ngx.nix
+    ./infisical.nix
+    ./webhook.nix
+    ./wallrus.nix
   ];
 }
