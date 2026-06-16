@@ -94,7 +94,7 @@ Anything that serves secrets or an admin UI on a public vhost MUST be gated.
 | 3001 | tinyauth (3000=adguard LAN) | | 5556 | dex |
 | 9090 | prometheus | | 3100 | loki |
 | 3200 | tempo (4319→OTLP) | | 3300 | grafana |
-| 4317/4318 | alloy OTLP (native gateway) | | | |
+| 4317/4318 | alloy OTLP (native gateway) | | 2283 | immich (server) |
 
 ## Before committing
 

@@ -23,6 +23,7 @@
     ./jdownloader.nix
     ./navidrome.nix
     ./qbittorrent.nix
+    ./immich.nix
     ./paperless-ngx.nix
     ./infisical.nix
     ./webhook.nix
