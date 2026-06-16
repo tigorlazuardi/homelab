@@ -30,7 +30,7 @@ in
             networks = [ networks.infisical.ref ];
             # alpine postgres runs as uid 70 — TODO(cutover): verify.
             userns = "keep-id:uid=70,gid=70";
-            volumes = [ "/srv/data/state/infisical/postgres:/var/lib/postgresql/data" ];
+            volumes = [ "/var/mnt/state/infisical/postgres:/var/lib/postgresql/data" ];
             environments = {
               POSTGRES_USER = "infisical";
               POSTGRES_DB = "infisical";
@@ -47,7 +47,7 @@ in
             image = "docker.io/redis:7-alpine";
             networks = [ networks.infisical.ref ];
             userns = null; # root-in-userns → host srv
-            volumes = [ "/srv/data/state/infisical/redis:/data" ];
+            volumes = [ "/var/mnt/state/infisical/redis:/data" ];
             environments.ALLOW_EMPTY_PASSWORD = "yes";
             healthCmd = "redis-cli ping";
             noNewPrivileges = true;
@@ -76,9 +76,9 @@ in
     };
 
   systemd.tmpfiles.rules = [
-    "d /srv/data/state/infisical 0750 srv srv -"
-    "d /srv/data/state/infisical/postgres 0700 srv srv -"
-    "d /srv/data/state/infisical/redis 0750 srv srv -"
+    "d /var/mnt/state/infisical 0750 srv srv -"
+    "d /var/mnt/state/infisical/postgres 0700 srv srv -"
+    "d /var/mnt/state/infisical/redis 0750 srv srv -"
   ];
 
   services.nginx.virtualHosts."${domain}" = {

@@ -19,8 +19,8 @@
             networks = [ networks.searxng.ref ];
             userns = "keep-id:uid=977,gid=977";
             volumes = [
-              "/srv/data/state/searxng/config:/etc/searxng:Z"
-              "/srv/data/state/searxng/data:/var/cache/searxng"
+              "/var/mnt/state/searxng/config:/etc/searxng:Z"
+              "/var/mnt/state/searxng/data:/var/cache/searxng"
             ];
             environments = {
               TZ = "Asia/Jakarta";
@@ -41,7 +41,7 @@
             networks = [ networks.searxng.ref ];
             userns = "keep-id:uid=999,gid=999";
             exec = "valkey-server --save 30 1 --loglevel warning";
-            volumes = [ "/srv/data/state/searxng/valkey:/data" ];
+            volumes = [ "/var/mnt/state/searxng/valkey:/data" ];
             environments.TZ = "Asia/Jakarta";
             noNewPrivileges = true;
             dropCapabilities = [ "all" ];
@@ -52,10 +52,10 @@
     };
 
   systemd.tmpfiles.rules = [
-    "d /srv/data/state/searxng 0750 srv srv -"
-    "d /srv/data/state/searxng/config 0750 srv srv -"
-    "d /srv/data/state/searxng/data 0750 srv srv -"
-    "d /srv/data/state/searxng/valkey 0750 srv srv -"
+    "d /var/mnt/state/searxng 0750 srv srv -"
+    "d /var/mnt/state/searxng/config 0750 srv srv -"
+    "d /var/mnt/state/searxng/data 0750 srv srv -"
+    "d /var/mnt/state/searxng/valkey 0750 srv srv -"
   ];
 
   services.nginx.virtualHosts."searxng.tigor.web.id" = {

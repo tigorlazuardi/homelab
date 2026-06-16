@@ -9,13 +9,13 @@
     auth = true;
     uid = 1000;
     harden = false; # linuxserver s6 init needs caps
-    volumes = [ "/srv/data/state/prowlarr:/config" ];
+    volumes = [ "/var/mnt/state/prowlarr:/config" ];
     environments = {
       TZ = "Asia/Jakarta";
       PUID = "1000";
       PGID = "1000";
       UMASK = "002";
     };
-    tmpfiles = [ "d /srv/data/state/prowlarr 0750 srv media -" ];
+    tmpfiles = [ "d /var/mnt/state/prowlarr 0750 srv media -" ];
   };
 }

@@ -56,15 +56,23 @@
     home.stateVersion = "25.11";
   };
 
-  # Shared data tree — owned srv:media, setgid (2775) so new files inherit `media`.
-  # Keep downloads + media on the SAME filesystem for atomic move / hardlink.
+  # Storage tiers — owned srv:media, setgid (2775) so new files inherit `media`.
+  # See .claude/rules/storage.md. Per-app subdirs are created by each service;
+  # here we only own the tier roots / shared trees.
   systemd.tmpfiles.rules = [
-    "d /srv/data 2775 srv media -"
-    "d /srv/data/downloads 2775 srv media -"
-    "d /srv/data/media 2775 srv media -"
-    "d /srv/data/media/movies 2775 srv media -"
-    "d /srv/data/media/tv 2775 srv media -"
-    "d /srv/data/media/music 2775 srv media -"
-    "d /srv/data/state 2750 srv media -" # per-app config/db (not shared widely)
+    # state (SSD) — config / db / index, high R/W. Per-app dirs under it.
+    "d /var/mnt/state 2750 srv media -"
+    # wolf (HDD) — durable but replaceable media + arr downloads. Downloads and
+    # library share this filesystem → atomic move / hardlink on import.
+    "d /var/mnt/wolf/media 2775 srv media -"
+    "d /var/mnt/wolf/media/tv 2775 srv media -"
+    "d /var/mnt/wolf/media/movies 2775 srv media -"
+    "d /var/mnt/wolf/media/music 2775 srv media -"
+    "d /var/mnt/wolf/downloads 2775 srv media -"
+    # nas (DYING HDD) — disposable downloads only (download-and-delete). Nothing
+    # irreplaceable lives here; safe to lose when the disk fails.
+    "d /var/mnt/nas/downloads 2775 srv media -"
+    # fenrir (HDD) — sentimental / irreplaceable (immich photos, paperless docs).
+    "d /var/mnt/fenrir 2775 srv media -"
   ];
 }

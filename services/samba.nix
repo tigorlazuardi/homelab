@@ -1,5 +1,6 @@
-# Samba — network file sharing (native). Exposes the disks + the new /srv/data
-# tree. Set the smb password manually: `smbpasswd -a homeserver`.
+# Samba — network file sharing (native). Exposes the storage-tier disks. Files
+# are forced to group `media` (setgid 2775) so SMB writes stay accessible to the
+# rootless services (srv). Set the smb password manually: `smbpasswd -a homeserver`.
 {
   services.samba = {
     enable = true;
@@ -15,6 +16,7 @@
         "guest account" = "nobody";
         "map to guest" = "bad user";
       };
+      # nas (dying HDD) — disposable downloads.
       nas = {
         path = "/var/mnt/nas";
         browseable = "yes";
@@ -22,10 +24,11 @@
         "guest ok" = "no";
         "valid users" = "homeserver";
         "force user" = "homeserver";
-        "force group" = "homeserver";
-        "create mask" = "0644";
-        "directory mask" = "0755";
+        "force group" = "media";
+        "create mask" = "0664";
+        "directory mask" = "2775";
       };
+      # wolf (HDD) — durable replaceable media + arr downloads.
       wolf = {
         path = "/var/mnt/wolf";
         browseable = "yes";
@@ -33,14 +36,13 @@
         "guest ok" = "no";
         "valid users" = "homeserver";
         "force user" = "homeserver";
-        "force group" = "homeserver";
-        "create mask" = "0644";
-        "directory mask" = "0755";
+        "force group" = "media";
+        "create mask" = "0664";
+        "directory mask" = "2775";
       };
-      # The rootless-services data tree. force group media so files stay
-      # group-accessible to the services (srv) and the human user.
-      data = {
-        path = "/srv/data";
+      # fenrir (HDD) — sentimental / irreplaceable (immich, paperless docs).
+      fenrir = {
+        path = "/var/mnt/fenrir";
         browseable = "yes";
         "read only" = "no";
         "guest ok" = "no";

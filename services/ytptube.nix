@@ -6,8 +6,8 @@
     hostPort = 8082; # 8081 taken by container port; publish on host 8082
     uid = 1000;
     volumes = [
-      "/srv/data/state/ytptube:/config"
-      "/srv/data/media/youtube:/downloads"
+      "/var/mnt/state/ytptube:/config"
+      "/var/mnt/wolf/media/youtube:/downloads"
     ];
     environments = {
       TZ = "Asia/Jakarta";
@@ -16,8 +16,8 @@
       YTP_TEMP_DISABLED = "true";
     };
     tmpfiles = [
-      "d /srv/data/state/ytptube 0750 srv srv -"
-      "d /srv/data/media/youtube 2775 srv media -"
+      "d /var/mnt/state/ytptube 0750 srv srv -"
+      "d /var/mnt/wolf/media/youtube 2775 srv media -"
     ];
   };
   # TODO(auth wave): re-add auth gate.

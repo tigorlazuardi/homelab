@@ -12,15 +12,15 @@
     userns = null;
     harden = false;
     volumes = [
-      "/srv/data/state/jdownloader:/config"
-      "/srv/data/downloads:/output"
+      "/var/mnt/state/jdownloader:/config"
+      "/var/mnt/nas/downloads:/output"
     ];
     environments = {
       TZ = "Asia/Jakarta";
       USER_ID = "0";
       GROUP_ID = "0";
     };
-    tmpfiles = [ "d /srv/data/state/jdownloader 0750 srv srv -" ];
+    tmpfiles = [ "d /var/mnt/state/jdownloader 0750 srv srv -" ];
     nginx.extraConfig = ''
       proxy_read_timeout 86400s;
       proxy_send_timeout 86400s;

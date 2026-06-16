@@ -7,8 +7,8 @@
     auth = true;
     uid = 1000;
     volumes = [
-      "/srv/data/state/suwayomi:/home/suwayomi/.local/share/Tachidesk"
-      "/srv/data/media/manga:/home/suwayomi/.local/share/Tachidesk/downloads"
+      "/var/mnt/state/suwayomi:/home/suwayomi/.local/share/Tachidesk"
+      "/var/mnt/wolf/media/manga:/home/suwayomi/.local/share/Tachidesk/downloads"
     ];
     environments = {
       TZ = "Asia/Jakarta";
@@ -22,8 +22,8 @@
       FLARESOLVERR_URL = "http://host.containers.internal:8191";
     };
     tmpfiles = [
-      "d /srv/data/state/suwayomi 0750 srv srv -"
-      "d /srv/data/media/manga 2775 srv media -"
+      "d /var/mnt/state/suwayomi 0750 srv srv -"
+      "d /var/mnt/wolf/media/manga 2775 srv media -"
     ];
   };
 }

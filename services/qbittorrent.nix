@@ -13,8 +13,12 @@
     uid = 1000;
     harden = false; # linuxserver s6 needs CHOWN/SETUID/SETGID
     volumes = [
-      "/srv/data/state/qbittorrent:/config"
-      "/srv/data/downloads:/downloads"
+      "/var/mnt/state/qbittorrent:/config"
+      # Personal/manual downloads → nas (disposable, dying disk).
+      "/var/mnt/nas/downloads:/downloads"
+      # arr-category downloads → wolf, SAME container path the *arr stack sees
+      # (/data/downloads) so imports hardlink into /data/media on wolf.
+      "/var/mnt/wolf/downloads:/data/downloads"
       "${pkgs.vuetorrent}/share/vuetorrent:/webui/vuetorrent:ro"
     ];
     environments = {
@@ -29,10 +33,13 @@
       "6881:6881"
       "6881:6881/udp"
     ];
-    tmpfiles = [ "d /srv/data/state/qbittorrent 0750 srv media -" ];
+    tmpfiles = [ "d /var/mnt/state/qbittorrent 0750 srv media -" ];
   };
 
   networking.firewall.allowedTCPPorts = [ 6881 ];
   networking.firewall.allowedUDPPorts = [ 6881 ];
   # TODO(cutover): add CPU/IO resource caps via the container's serviceConfig.
+  # TODO(cutover): in the qBittorrent UI set the default save path to /downloads
+  # (nas) and category save paths sonarr/radarr → /data/downloads (wolf) so arr
+  # imports hardlink. Sonarr/Radarr download-client category must match.
 }

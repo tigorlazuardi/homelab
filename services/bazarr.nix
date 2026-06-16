@@ -9,8 +9,8 @@
     uid = 1000;
     harden = false;
     volumes = [
-      "/srv/data/state/bazarr:/config"
-      "/srv/data:/data"
+      "/var/mnt/state/bazarr:/config"
+      "/var/mnt/wolf:/data"
     ];
     environments = {
       TZ = "Asia/Jakarta";
@@ -18,6 +18,6 @@
       PGID = "1000";
       UMASK = "002";
     };
-    tmpfiles = [ "d /srv/data/state/bazarr 0750 srv media -" ];
+    tmpfiles = [ "d /var/mnt/state/bazarr 0750 srv media -" ];
   };
 }

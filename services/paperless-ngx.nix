@@ -1,6 +1,6 @@
 # Paperless-ngx — document management. Multi-container (app + redis) on a private
 # rootless network, so explicit (not the single-container helper). Scanned docs
-# are personal data → /srv/data owned srv:media.
+# are sentimental → /var/mnt/fenrir; index/db/redis → /var/mnt/state (SSD).
 { config, ... }:
 let
   domain = "docs.tigor.web.id";
@@ -34,10 +34,12 @@ in
             # keep-id maps that to host srv. Not cap-dropped (init needs CHOWN).
             userns = "keep-id:uid=1000,gid=1000";
             volumes = [
-              "/srv/data/state/paperless/data:/usr/src/paperless/data"
-              "/srv/data/state/paperless/media:/usr/src/paperless/media"
-              "/srv/data/state/paperless/export:/usr/src/paperless/export"
-              "/srv/data/state/paperless/consume:/usr/src/paperless/consume"
+              # index / classifier / sqlite — rebuildable, fast → SSD
+              "/var/mnt/state/paperless/data:/usr/src/paperless/data"
+              "/var/mnt/state/paperless/consume:/usr/src/paperless/consume"
+              # the actual documents + exported archives — sentimental → fenrir
+              "/var/mnt/fenrir/paperless/media:/usr/src/paperless/media"
+              "/var/mnt/fenrir/paperless/export:/usr/src/paperless/export"
             ];
             environments = {
               PAPERLESS_REDIS = "redis://paperless-redis:6379";
@@ -65,7 +67,7 @@ in
             image = "docker.io/library/redis:8";
             networks = [ networks.paperless.ref ];
             userns = null; # run as root-in-userns → host srv (writes its data dir)
-            volumes = [ "/srv/data/state/paperless/redis:/data" ];
+            volumes = [ "/var/mnt/state/paperless/redis:/data" ];
             noNewPrivileges = true;
             dropCapabilities = [ "all" ];
             autoUpdate = "registry";
@@ -75,12 +77,13 @@ in
     };
 
   systemd.tmpfiles.rules = [
-    "d /srv/data/state/paperless 0750 srv srv -"
-    "d /srv/data/state/paperless/data 2775 srv media -"
-    "d /srv/data/state/paperless/media 2775 srv media -"
-    "d /srv/data/state/paperless/export 2775 srv media -"
-    "d /srv/data/state/paperless/consume 2775 srv media -"
-    "d /srv/data/state/paperless/redis 0750 srv srv -"
+    "d /var/mnt/state/paperless 0750 srv srv -"
+    "d /var/mnt/state/paperless/data 2775 srv media -"
+    "d /var/mnt/state/paperless/consume 2775 srv media -"
+    "d /var/mnt/state/paperless/redis 0750 srv srv -"
+    "d /var/mnt/fenrir/paperless 2775 srv media -"
+    "d /var/mnt/fenrir/paperless/media 2775 srv media -"
+    "d /var/mnt/fenrir/paperless/export 2775 srv media -"
   ];
 
   services.nginx.virtualHosts."${domain}" = {

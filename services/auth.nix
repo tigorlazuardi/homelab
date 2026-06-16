@@ -132,8 +132,8 @@ in
           SESSION_EXPIRY = toString (24 * 60 * 60 * 30); # 30 days
         };
         environmentFiles = [ config.sops.secrets."tinyauth.env".path ];
-        volumes = [ "/srv/data/state/tinyauth:/data" ];
-        tmpfiles = [ "d /srv/data/state/tinyauth 0750 srv srv -" ];
+        volumes = [ "/var/mnt/state/tinyauth:/data" ];
+        tmpfiles = [ "d /var/mnt/state/tinyauth 0750 srv srv -" ];
       };
 
       # Passkey IdP / user store.
@@ -146,12 +146,12 @@ in
           TRUST_PROXY = "true";
         };
         environmentFiles = [ config.sops.secrets."pocket-id.env".path ];
-        volumes = [ "/srv/data/state/pocket-id:/app/data" ];
-        tmpfiles = [ "d /srv/data/state/pocket-id 0750 srv srv -" ];
+        volumes = [ "/var/mnt/state/pocket-id:/app/data" ];
+        tmpfiles = [ "d /var/mnt/state/pocket-id 0750 srv srv -" ];
       };
 
       # OIDC broker between tinyauth and pocket-id. Runs as uid 1001 → keep-id
-      # maps it to host srv, so /srv/data/state/dex and the mounted config (owned
+      # maps it to host srv, so /var/mnt/state/dex and the mounted config (owned
       # srv) are readable.
       dex = {
         image = "ghcr.io/dexidp/dex:v2.37.0";
@@ -159,11 +159,11 @@ in
         subdomain = "dex";
         uid = 1001;
         volumes = [
-          "/srv/data/state/dex:/var/lib/dex"
+          "/var/mnt/state/dex:/var/lib/dex"
           "${config.sops.secrets."dex.yaml".path}:/etc/dex/config.yaml:ro"
         ];
         extraContainerConfig.exec = "dex serve /etc/dex/config.yaml";
-        tmpfiles = [ "d /srv/data/state/dex 0750 srv srv -" ];
+        tmpfiles = [ "d /var/mnt/state/dex 0750 srv srv -" ];
       };
     };
   };

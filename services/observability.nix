@@ -327,7 +327,7 @@ in
         publishPorts = [ "127.0.0.1:${toString promPort}:9090" ];
         volumes = [
           "${prometheusYml}:/etc/prometheus/prometheus.yml:ro"
-          "/srv/data/state/prometheus:/prometheus"
+          "/var/mnt/state/prometheus:/prometheus"
         ];
         exec = "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=30d --web.enable-remote-write-receiver --web.enable-otlp-receiver --web.listen-address=0.0.0.0:9090";
         noNewPrivileges = true;
@@ -344,7 +344,7 @@ in
         publishPorts = [ "127.0.0.1:${toString lokiPort}:${toString lokiPort}" ];
         volumes = [
           "${lokiYml}:/etc/loki/loki.yml:ro"
-          "/srv/data/state/loki:/loki"
+          "/var/mnt/state/loki:/loki"
         ];
         exec = "-config.file=/etc/loki/loki.yml";
         noNewPrivileges = true;
@@ -364,7 +364,7 @@ in
         ];
         volumes = [
           "${tempoYml}:/etc/tempo/tempo.yml:ro"
-          "/srv/data/state/tempo:/var/tempo"
+          "/var/mnt/state/tempo:/var/tempo"
         ];
         exec = "-config.file=/etc/tempo/tempo.yml";
         noNewPrivileges = true;
@@ -380,7 +380,7 @@ in
         userns = "keep-id:uid=472,gid=472"; # grafana image runs as uid 472
         publishPorts = [ "127.0.0.1:${toString grafanaHostPort}:3000" ];
         volumes = [
-          "/srv/data/state/grafana:/var/lib/grafana"
+          "/var/mnt/state/grafana:/var/lib/grafana"
           "${grafanaDatasources}:/etc/grafana/provisioning/datasources/datasources.yaml:ro"
           "${config.sops.templates."grafana-telegram.yaml".path}:/etc/grafana/provisioning/alerting/telegram.yaml:ro"
           "${config.sops.secrets."observability/grafana_admin_password".path}:/run/secrets/grafana_admin_password:ro"
@@ -399,10 +399,10 @@ in
   };
 
   systemd.tmpfiles.rules = [
-    "d /srv/data/state/prometheus 0750 srv srv -"
-    "d /srv/data/state/loki 0750 srv srv -"
-    "d /srv/data/state/tempo 0750 srv srv -"
-    "d /srv/data/state/grafana 0750 srv srv -"
+    "d /var/mnt/state/prometheus 0750 srv srv -"
+    "d /var/mnt/state/loki 0750 srv srv -"
+    "d /var/mnt/state/tempo 0750 srv srv -"
+    "d /var/mnt/state/grafana 0750 srv srv -"
   ];
 
   # Grafana keeps its own login (admin password from sops); no tinyauth gate.

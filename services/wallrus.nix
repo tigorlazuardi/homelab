@@ -15,7 +15,7 @@
     port = 5173;
     uid = 1000;
     harden = false; # PUID/PGID → chowns data dir, needs caps
-    volumes = [ "/srv/data/state/wallrus:/data/wallrus" ];
+    volumes = [ "/var/mnt/state/wallrus:/data/wallrus" ];
     environments = {
       PUID = "1000";
       PGID = "1000";
@@ -28,7 +28,7 @@
       OTEL_SERVICE_NAME = "wallrus";
     };
     environmentFiles = [ config.sops.secrets."wallrus.env".path ];
-    tmpfiles = [ "d /srv/data/state/wallrus 2775 srv media -" ];
+    tmpfiles = [ "d /var/mnt/state/wallrus 2775 srv media -" ];
   };
 
   # Push-to-deploy: webhook (root) restarts the rootless srv user unit.
