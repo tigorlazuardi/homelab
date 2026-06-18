@@ -16,6 +16,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     quadlet-nix.url = "github:SEIAROTg/quadlet-nix";
+    # Agent/dev CLIs for the interactive homeserver user (claude-code, pi).
+    llm-agents.url = "github:numtide/llm-agents.nix";
   };
 
   outputs =

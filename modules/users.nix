@@ -46,6 +46,12 @@
 
   # Per-user Home Manager scaffold (global settings live in configuration.nix).
   home-manager.users.homeserver = {
+    imports = [
+      ./home/git.nix
+      ./home/lazygit.nix
+      ./home/bun.nix
+      ./home/agents.nix
+    ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
     home.stateVersion = "25.11";
