@@ -55,6 +55,7 @@
       ./home/bun.nix
       ./home/agents.nix
       ./home/lazyvim
+      ./home/systemd-srv.nix
     ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
