@@ -14,8 +14,12 @@
     harden = false; # linuxserver s6 needs CHOWN/SETUID/SETGID
     volumes = [
       "/var/mnt/state/qbittorrent:/config"
-      # Personal/manual downloads → nas (disposable, dying disk).
-      "/var/mnt/nas/downloads:/downloads"
+      # Personal/manual downloads → the OLD personal-instance location on nas
+      # (918G, disposable, dying disk). Container path /downloads matches the old
+      # personal qbit's save_path (/downloads/<category>) so its torrents resume
+      # in place once their resume data is merged into /config. jellyfin reads
+      # this same tree :ro (see jellyfin.nix /media-personal).
+      "/var/mnt/nas/torrents/downloads:/downloads"
       # arr-category downloads → wolf, SAME container path the *arr stack sees
       # (/data/torrents) so imports hardlink into /data/media on wolf. Path name
       # matches the OLD deploy so carried qbit fastresume + arr configs need no

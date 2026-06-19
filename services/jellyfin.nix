@@ -23,6 +23,8 @@
       "/var/mnt/state/jellyfin/cache:/cache"
       # library is read-only to Jellyfin — arr owns writes. Matches new layout.
       "/var/mnt/wolf/media:/media:ro"
+      # personal qbit downloads (old instance, on nas) — read-only library.
+      "/var/mnt/nas/torrents/downloads:/media-personal:ro"
     ];
     environments = {
       TZ = "Asia/Jakarta";
