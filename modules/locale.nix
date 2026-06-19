@@ -1,4 +1,8 @@
 {
+  # Install terminfo for many terminals (ghostty, kitty, wezterm, …) so SSH
+  # sessions from those clients don't hit "unknown terminal type" in pagers/tput.
+  environment.enableAllTerminfo = true;
+
   i18n.defaultLocale = "en_US.UTF-8";
 
   i18n.extraLocaleSettings = {

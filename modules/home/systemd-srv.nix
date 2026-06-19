@@ -25,9 +25,9 @@
     srvstop = "srvctl stop $argv";
     srvfix = "srvctl reset-failed $argv"; # clear a failed/start-limit unit
 
-    # No-arg overviews.
-    srvls = "srvctl list-units --type=service $argv";
-    srvfail = "srvctl list-units --type=service --state=failed $argv";
+    # No-arg overviews (--no-pager: avoid the pager/terminfo dance).
+    srvls = "srvctl list-units --type=service --no-pager $argv";
+    srvfail = "srvctl list-units --type=service --state=failed --no-pager $argv";
 
     # Quick HTTP health of a loopback port: `srvping 8096`
     srvping = ''
