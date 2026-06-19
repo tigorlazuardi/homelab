@@ -44,12 +44,15 @@ in
           };
           # Bulk imports spawn parallel ffmpeg (thumbnail + video transcode) that
           # peg all 8 threads → load ~18, 100°C thermal throttle, host goes
-          # unresponsive. Cap CPU + deprioritize so system/interactive work always
-          # wins; the import just runs slower. (Also lower per-job concurrency in
-          # Immich Admin → Job Settings: Thumbnail Generation + Video Transcoding.)
+          # unresponsive. All four immich units share `immich.slice` (CPUQuota
+          # 320% = 40% of the 8-thread box) — that group ceiling caps immich
+          # + every child (ffmpeg, ML inference) combined, no matter how the work
+          # splits. CPUWeight only decides the split *within* the slice. (Also
+          # lower per-job concurrency in Immich Admin → Job Settings: Thumbnail
+          # Generation + Video Transcoding.)
           serviceConfig = {
-            CPUQuota = "400%"; # ≤4 of 8 threads
-            CPUWeight = "30"; # loses to default-weight (100) system tasks
+            Slice = "immich.slice";
+            CPUWeight = "30"; # server (ffmpeg/thumbs) wins over ML within the slice
           };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-server:release";
@@ -84,10 +87,10 @@ in
 
         containers.immich-machine-learning = {
           autoStart = true;
-          # ML (face/CLIP) inference also CPU-bound (no GPU). Cap harder than the
-          # server so the two together can't saturate the box.
+          # ML (face/CLIP) inference also CPU-bound (no GPU). Shares immich.slice;
+          # lower weight so the server's transcodes win when both want CPU.
           serviceConfig = {
-            CPUQuota = "200%"; # ≤2 of 8 threads
+            Slice = "immich.slice";
             CPUWeight = "20";
           };
           containerConfig = {
@@ -105,6 +108,7 @@ in
 
         containers.immich-valkey = {
           autoStart = true;
+          serviceConfig.Slice = "immich.slice"; # count cache toward the immich cap too
           containerConfig = {
             image = "docker.io/valkey/valkey:8-bookworm";
             networks = [ networks.immich.ref ];
@@ -120,6 +124,7 @@ in
 
         containers.immich-postgres = {
           autoStart = true;
+          serviceConfig.Slice = "immich.slice"; # db work during import counts too
           containerConfig = {
             # vectorchord/pgvecto.rs build Immich requires — keep in lockstep with
             # the server image per Immich's published compose.
@@ -141,6 +146,15 @@ in
             autoUpdate = "registry";
           };
         };
+      };
+
+      # Group CPU ceiling for the whole immich stack (server + ML + db + cache,
+      # and every child incl ffmpeg). 320% = 40% of the 8-thread host, so a bulk
+      # import can no longer thermal-throttle or starve the box. CPUWeight here
+      # deprioritizes the whole group vs default-weight (100) system units.
+      systemd.user.slices.immich.Slice = {
+        CPUQuota = "320%";
+        CPUWeight = "30";
       };
     };
 
