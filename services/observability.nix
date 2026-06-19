@@ -109,6 +109,21 @@ let
     ];
   };
 
+  # Dashboard provisioning provider — loads JSON dashboards from a mounted dir.
+  grafanaDashboardsProvider = yaml.generate "dashboards.yaml" {
+    apiVersion = 1;
+    providers = [
+      {
+        name = "default";
+        type = "file";
+        disableDeletion = true;
+        allowUiUpdates = false;
+        options.path = "/etc/grafana/provisioning/dashboards/json";
+        options.foldersFromFilesStructure = false;
+      }
+    ];
+  };
+
   # Native Alloy: OTLP gateway + host node metrics + journald.
   alloyConfig = pkgs.writeText "config.alloy" ''
     // ---- OTLP ingestion (apps) ----
@@ -386,12 +401,17 @@ in
           "${grafanaDatasources}:/etc/grafana/provisioning/datasources/datasources.yaml:ro"
           "${config.sops.templates."grafana-telegram.yaml".path}:/etc/grafana/provisioning/alerting/telegram.yaml:ro"
           "${config.sops.secrets."observability/grafana_admin_password".path}:/run/secrets/grafana_admin_password:ro"
+          "${grafanaDashboardsProvider}:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro"
+          "${./grafana-dashboards/system-performance.json}:/etc/grafana/provisioning/dashboards/json/system-performance.json:ro"
         ];
         environments = {
           GF_SERVER_ROOT_URL = "https://grafana.tigor.web.id";
           GF_SERVER_DOMAIN = "grafana.tigor.web.id";
           GF_SECURITY_ADMIN_PASSWORD__FILE = "/run/secrets/grafana_admin_password";
           GF_USERS_ALLOW_SIGN_UP = "false";
+          GF_AUTH_ANONYMOUS_ENABLED = "true";
+          GF_AUTH_ANONYMOUS_ORG_ROLE = "Viewer";
+          GF_AUTH_ANONYMOUS_HIDE_VERSION = "true";
         };
         noNewPrivileges = true;
         dropCapabilities = [ "all" ];
