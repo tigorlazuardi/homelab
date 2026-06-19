@@ -427,9 +427,25 @@ in
     "d /var/mnt/state/grafana 0750 srv srv -"
   ];
 
-  # Grafana keeps its own login (admin password from sops); no tinyauth gate.
+  # Two doors to the same Grafana. Anonymous access is instance-wide (Task 2),
+  # so BOTH vhosts are tinyauth-gated — nothing is world-readable.
+  #
+  # grafana.tigor.web.id — full Grafana (admin login for edits, Viewer otherwise).
   services.nginx.virtualHosts."grafana.tigor.web.id" = {
     forceSSL = true;
+    tinyauth.enable = true;
+    locations."/".proxyPass = "http://127.0.0.1:${toString grafanaHostPort}";
+  };
+
+  # tigor.web.id (apex) — read-only at-a-glance kiosk. Bare `/` redirects to the
+  # system-perf dashboard in kiosk mode; everything else proxies Grafana so the
+  # page is same-origin (root-relative API/asset calls work without CORS).
+  services.nginx.virtualHosts."tigor.web.id" = {
+    forceSSL = true;
+    tinyauth.enable = true;
+    locations."= /".extraConfig = ''
+      return 302 /d/system-perf/system-performance?kiosk&theme=dark;
+    '';
     locations."/".proxyPass = "http://127.0.0.1:${toString grafanaHostPort}";
   };
 }
