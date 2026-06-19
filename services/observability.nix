@@ -24,6 +24,10 @@
 let
   yaml = pkgs.formats.yaml { };
 
+  # Captured from the SYSTEM scope (the home-manager.users.srv block below shadows `config`).
+  grafanaTelegramPath = config.sops.templates."grafana-telegram.yaml".path;
+  grafanaAdminPwPath = config.sops.secrets."observability/grafana_admin_password".path;
+
   # ---- host-loopback ports (containers publish here) ----
   promPort = 9090;
   lokiPort = 3100;
@@ -89,7 +93,7 @@ let
         type = "prometheus";
         uid = "prometheus";
         access = "proxy";
-        url = "http://host.containers.internal:${toString promPort}";
+        url = "http://prometheus:${toString promPort}";
         isDefault = true;
       }
       {
@@ -97,14 +101,14 @@ let
         type = "loki";
         uid = "loki";
         access = "proxy";
-        url = "http://host.containers.internal:${toString lokiPort}";
+        url = "http://loki:${toString lokiPort}";
       }
       {
         name = "Tempo";
         type = "tempo";
         uid = "tempo";
         access = "proxy";
-        url = "http://host.containers.internal:${toString tempoHttpPort}";
+        url = "http://tempo:${toString tempoHttpPort}";
       }
     ];
   };
@@ -336,105 +340,120 @@ in
   ];
 
   # ---- backend containers (rootless srv, loopback only) ----
-  home-manager.users.srv.virtualisation.quadlet.containers = {
-    prometheus = {
-      autoStart = true;
-      serviceConfig = {
-        Slice = "media-batch.slice"; # background scraping — yields to coding + jellyfin
-        CPUWeight = "20";
-      };
-      containerConfig = {
-        image = "docker.io/prom/prometheus:latest";
-        userns = "keep-id:uid=65534,gid=65534"; # prom image runs as nobody
-        publishPorts = [ "127.0.0.1:${toString promPort}:9090" ];
-        volumes = [
-          "${prometheusYml}:/etc/prometheus/prometheus.yml:ro"
-          "/var/mnt/state/prometheus:/prometheus"
-        ];
-        exec = "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=30d --web.enable-remote-write-receiver --web.enable-otlp-receiver --web.listen-address=0.0.0.0:9090";
-        noNewPrivileges = true;
-        dropCapabilities = [ "all" ];
-        autoUpdate = "registry";
-      };
-    };
+  home-manager.users.srv =
+    { config, ... }:
+    let
+      inherit (config.virtualisation.quadlet) networks;
+    in
+    {
+      virtualisation.quadlet = {
+        networks.observability = { };
 
-    loki = {
-      autoStart = true;
-      serviceConfig = {
-        Slice = "media-batch.slice"; # background log indexing — yields to coding + jellyfin
-        CPUWeight = "20";
-      };
-      containerConfig = {
-        image = "docker.io/grafana/loki:latest";
-        userns = "keep-id:uid=10001,gid=10001";
-        publishPorts = [ "127.0.0.1:${toString lokiPort}:${toString lokiPort}" ];
-        volumes = [
-          "${lokiYml}:/etc/loki/loki.yml:ro"
-          "/var/mnt/state/loki:/loki"
-        ];
-        exec = "-config.file=/etc/loki/loki.yml";
-        noNewPrivileges = true;
-        dropCapabilities = [ "all" ];
-        autoUpdate = "registry";
-      };
-    };
+        containers = {
+          prometheus = {
+            autoStart = true;
+            serviceConfig = {
+              Slice = "media-batch.slice"; # background scraping — yields to coding + jellyfin
+              CPUWeight = "20";
+            };
+            containerConfig = {
+              image = "docker.io/prom/prometheus:latest";
+              userns = "keep-id:uid=65534,gid=65534"; # prom image runs as nobody
+              publishPorts = [ "127.0.0.1:${toString promPort}:9090" ];
+              networks = [ networks.observability.ref ];
+              volumes = [
+                "${prometheusYml}:/etc/prometheus/prometheus.yml:ro"
+                "/var/mnt/state/prometheus:/prometheus"
+              ];
+              exec = "--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=30d --web.enable-remote-write-receiver --web.enable-otlp-receiver --web.listen-address=0.0.0.0:9090";
+              noNewPrivileges = true;
+              dropCapabilities = [ "all" ];
+              autoUpdate = "registry";
+            };
+          };
 
-    tempo = {
-      autoStart = true;
-      serviceConfig = {
-        Slice = "media-batch.slice"; # background trace storage — yields to coding + jellyfin
-        CPUWeight = "20";
-      };
-      containerConfig = {
-        # Pinned: tempo:latest rejects the standard `compactor` config field
-        # ("field compactor not found in type app.Config"). 2.6.1 is known-good.
-        image = "docker.io/grafana/tempo:2.6.1";
-        userns = "keep-id:uid=10001,gid=10001";
-        publishPorts = [
-          "127.0.0.1:${toString tempoHttpPort}:${toString tempoHttpPort}"
-          "127.0.0.1:${toString tempoOtlpHostPort}:4317"
-        ];
-        volumes = [
-          "${tempoYml}:/etc/tempo/tempo.yml:ro"
-          "/var/mnt/state/tempo:/var/tempo"
-        ];
-        exec = "-config.file=/etc/tempo/tempo.yml";
-        noNewPrivileges = true;
-        dropCapabilities = [ "all" ];
-        autoUpdate = "registry";
-      };
-    };
+          loki = {
+            autoStart = true;
+            serviceConfig = {
+              Slice = "media-batch.slice"; # background log indexing — yields to coding + jellyfin
+              CPUWeight = "20";
+            };
+            containerConfig = {
+              image = "docker.io/grafana/loki:latest";
+              userns = "keep-id:uid=10001,gid=10001";
+              publishPorts = [ "127.0.0.1:${toString lokiPort}:${toString lokiPort}" ];
+              networks = [ networks.observability.ref ];
+              volumes = [
+                "${lokiYml}:/etc/loki/loki.yml:ro"
+                "/var/mnt/state/loki:/loki"
+              ];
+              exec = "-config.file=/etc/loki/loki.yml";
+              noNewPrivileges = true;
+              dropCapabilities = [ "all" ];
+              autoUpdate = "registry";
+            };
+          };
 
-    grafana = {
-      autoStart = true;
-      serviceConfig.Slice = "media-interactive.slice"; # interactive UI — wins when user has dashboard open
-      containerConfig = {
-        image = "docker.io/grafana/grafana:latest";
-        userns = "keep-id:uid=472,gid=472"; # grafana image runs as uid 472
-        publishPorts = [ "127.0.0.1:${toString grafanaHostPort}:3000" ];
-        volumes = [
-          "/var/mnt/state/grafana:/var/lib/grafana"
-          "${grafanaDatasources}:/etc/grafana/provisioning/datasources/datasources.yaml:ro"
-          "${config.sops.templates."grafana-telegram.yaml".path}:/etc/grafana/provisioning/alerting/telegram.yaml:ro"
-          "${config.sops.secrets."observability/grafana_admin_password".path}:/run/secrets/grafana_admin_password:ro"
-          "${grafanaDashboardsProvider}:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro"
-          "${./grafana-dashboards/system-performance.json}:/etc/grafana/provisioning/dashboards/json/system-performance.json:ro"
-        ];
-        environments = {
-          GF_SERVER_ROOT_URL = "https://grafana.tigor.web.id";
-          GF_SERVER_DOMAIN = "grafana.tigor.web.id";
-          GF_SECURITY_ADMIN_PASSWORD__FILE = "/run/secrets/grafana_admin_password";
-          GF_USERS_ALLOW_SIGN_UP = "false";
-          GF_AUTH_ANONYMOUS_ENABLED = "true";
-          GF_AUTH_ANONYMOUS_ORG_ROLE = "Viewer";
-          GF_AUTH_ANONYMOUS_HIDE_VERSION = "true";
+          tempo = {
+            autoStart = true;
+            serviceConfig = {
+              Slice = "media-batch.slice"; # background trace storage — yields to coding + jellyfin
+              CPUWeight = "20";
+            };
+            containerConfig = {
+              # Pinned: tempo:latest rejects the standard `compactor` config field
+              # ("field compactor not found in type app.Config"). 2.6.1 is known-good.
+              image = "docker.io/grafana/tempo:2.6.1";
+              userns = "keep-id:uid=10001,gid=10001";
+              publishPorts = [
+                "127.0.0.1:${toString tempoHttpPort}:${toString tempoHttpPort}"
+                "127.0.0.1:${toString tempoOtlpHostPort}:4317"
+              ];
+              networks = [ networks.observability.ref ];
+              volumes = [
+                "${tempoYml}:/etc/tempo/tempo.yml:ro"
+                "/var/mnt/state/tempo:/var/tempo"
+              ];
+              exec = "-config.file=/etc/tempo/tempo.yml";
+              noNewPrivileges = true;
+              dropCapabilities = [ "all" ];
+              autoUpdate = "registry";
+            };
+          };
+
+          grafana = {
+            autoStart = true;
+            serviceConfig.Slice = "media-interactive.slice"; # interactive UI — wins when user has dashboard open
+            containerConfig = {
+              image = "docker.io/grafana/grafana:latest";
+              userns = "keep-id:uid=472,gid=472"; # grafana image runs as uid 472
+              publishPorts = [ "127.0.0.1:${toString grafanaHostPort}:3000" ];
+              networks = [ networks.observability.ref ];
+              volumes = [
+                "/var/mnt/state/grafana:/var/lib/grafana"
+                "${grafanaDatasources}:/etc/grafana/provisioning/datasources/datasources.yaml:ro"
+                "${grafanaTelegramPath}:/etc/grafana/provisioning/alerting/telegram.yaml:ro"
+                "${grafanaAdminPwPath}:/run/secrets/grafana_admin_password:ro"
+                "${grafanaDashboardsProvider}:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro"
+                "${./grafana-dashboards/system-performance.json}:/etc/grafana/provisioning/dashboards/json/system-performance.json:ro"
+              ];
+              environments = {
+                GF_SERVER_ROOT_URL = "https://grafana.tigor.web.id";
+                GF_SERVER_DOMAIN = "grafana.tigor.web.id";
+                GF_SECURITY_ADMIN_PASSWORD__FILE = "/run/secrets/grafana_admin_password";
+                GF_USERS_ALLOW_SIGN_UP = "false";
+                GF_AUTH_ANONYMOUS_ENABLED = "true";
+                GF_AUTH_ANONYMOUS_ORG_ROLE = "Viewer";
+                GF_AUTH_ANONYMOUS_HIDE_VERSION = "true";
+              };
+              noNewPrivileges = true;
+              dropCapabilities = [ "all" ];
+              autoUpdate = "registry";
+            };
+          };
         };
-        noNewPrivileges = true;
-        dropCapabilities = [ "all" ];
-        autoUpdate = "registry";
       };
     };
-  };
 
   systemd.tmpfiles.rules = [
     "d /var/mnt/state/prometheus 0750 srv srv -"
