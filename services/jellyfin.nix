@@ -16,6 +16,7 @@
     image = "lscr.io/linuxserver/jellyfin:latest";
     port = 8096;
     subdomain = "jellyfin";
+    networks = [ "arr" ];
     userns = null; # default rootless userns → full gid range mapped (s6 setgroups)
     harden = false; # linuxserver s6 init needs caps
     # Interactive media slice: jellyfin wins over batch media (ytptube, immich) and

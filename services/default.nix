@@ -21,6 +21,7 @@
     ./bazarr.nix
     ./recyclarr.nix
     ./jellyfin.nix
+    ./seerr.nix
     ./flaresolverr.nix
     ./searxng.nix
     ./suwayomi.nix

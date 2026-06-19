@@ -6,6 +6,7 @@
   homelab.containers.prowlarr = {
     image = "lscr.io/linuxserver/prowlarr:latest";
     port = 9696;
+    networks = [ "arr" ];
     auth = true;
     uid = 1000;
     harden = false; # linuxserver s6 init needs caps

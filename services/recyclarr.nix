@@ -9,6 +9,7 @@
   homelab.containers.recyclarr = {
     image = "ghcr.io/recyclarr/recyclarr:latest";
     port = null; # headless — no ingress
+    networks = [ "arr" ];
     uid = 1000; # match carried config ownership
     volumes = [ "/var/mnt/state/recyclarr:/config" ];
     environments = {

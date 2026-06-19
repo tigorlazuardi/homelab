@@ -8,6 +8,7 @@
     image = "docker.io/linuxserver/qbittorrent:latest";
     port = 8080;
     hostPort = 8083; # host 8080 is searxng
+    networks = [ "arr" ];
     auth = true;
     authLocations = [ "/" ]; # gate the UI only; leave the API reachable
     uid = 1000;

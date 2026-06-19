@@ -5,6 +5,7 @@
   homelab.containers.radarr = {
     image = "lscr.io/linuxserver/radarr:latest";
     port = 7878;
+    networks = [ "arr" ];
     auth = true;
     uid = 1000;
     harden = false;

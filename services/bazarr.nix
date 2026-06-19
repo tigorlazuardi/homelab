@@ -5,6 +5,7 @@
   homelab.containers.bazarr = {
     image = "lscr.io/linuxserver/bazarr:latest";
     port = 6767;
+    networks = [ "arr" ];
     auth = true;
     uid = 1000;
     harden = false;

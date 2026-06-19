@@ -4,6 +4,7 @@
     image = "ghcr.io/suwayomi/suwayomi-server:stable";
     port = 4567;
     subdomain = "manga";
+    networks = [ "arr" ];
     auth = true;
     uid = 1000;
     volumes = [
@@ -18,8 +19,8 @@
       UPDATE_EXCLUDE_UNREAD = "false";
       UPDATE_EXCLUDE_STARTED = "false";
       FLARESOLVERR_ENABLED = "true";
-      # rootless: reach flaresolverr's host-published port.
-      FLARESOLVERR_URL = "http://host.containers.internal:8191";
+      # reach flaresolverr by container name on the shared `arr` network.
+      FLARESOLVERR_URL = "http://flaresolverr:8191";
     };
     tmpfiles = [
       # 0755 (o+x): under keep-id the container's root is a subuid, and crun must

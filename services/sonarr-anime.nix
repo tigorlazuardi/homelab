@@ -6,6 +6,7 @@
   homelab.containers.sonarr-anime = {
     image = "lscr.io/linuxserver/sonarr:latest";
     port = 8989; # in-container port (linuxserver default)
+    networks = [ "arr" ];
     hostPort = 8990; # host loopback (8989 = primary sonarr)
     subdomain = "sonarr-anime";
     auth = true;

@@ -5,6 +5,7 @@
   homelab.containers.sonarr = {
     image = "lscr.io/linuxserver/sonarr:latest";
     port = 8989;
+    networks = [ "arr" ];
     auth = true;
     uid = 1000;
     harden = false;

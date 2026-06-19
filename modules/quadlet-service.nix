@@ -4,7 +4,9 @@
 #
 # Single-container services only. Multi-container stacks that need a shared
 # private network (searxng, immich, observability) stay hand-written because the
-# network `.ref` must be taken inside the Home Manager user scope.
+# network `.ref` must be taken inside the Home Manager user scope. Single-container
+# helpers can now join a shared network via the `networks` knob; only multi-container
+# stacks with their OWN private network stay hand-written.
 { config, lib, ... }:
 let
   inherit (lib)
@@ -122,6 +124,11 @@ in
               type = types.listOf types.str;
               default = [ ];
             };
+            networks = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              description = "Shared podman network names to join (e.g. [ \"arr\" ]). Resolves peers by container name — see .claude/rules/container-networking.md.";
+            };
           };
         }
       )
@@ -129,33 +136,50 @@ in
   };
 
   config = {
-    home-manager.users.srv.virtualisation.quadlet.containers = mapAttrs (
-      _: c: {
-        inherit (c) autoStart;
-        serviceConfig = c.serviceConfig;
-        containerConfig = mkMerge [
-          {
-            inherit (c)
-              image
-              volumes
-              environments
-              environmentFiles
-              autoUpdate
-              ;
-          }
-          (optionalAttrs (c.userns != null) { inherit (c) userns; })
-          (optionalAttrs (c.user != null) { inherit (c) user; })
-          (optionalAttrs (c.hostPort != null && c.port != null) {
-            publishPorts = [ "127.0.0.1:${toString c.hostPort}:${toString c.port}" ];
-          })
-          (optionalAttrs c.harden {
-            noNewPrivileges = true;
-            dropCapabilities = [ "all" ];
-          })
-          c.extraContainerConfig
-        ];
-      }
-    ) cfg;
+    home-manager.users.srv =
+      { config, ... }:
+      let
+        inherit (config.virtualisation.quadlet) networks;
+      in
+      {
+        virtualisation.quadlet = {
+          # Shared network for the media-automation stack (+ jellyfin, seerr,
+          # suwayomi). Members opt in with `networks = [ "arr" ]` and address each
+          # other by container name (rootless pasta can't hairpin host loopback —
+          # see .claude/rules/container-networking.md).
+          networks.arr = { };
+          containers = mapAttrs (
+            _: c: {
+              inherit (c) autoStart;
+              serviceConfig = c.serviceConfig;
+              containerConfig = mkMerge [
+                {
+                  inherit (c)
+                    image
+                    volumes
+                    environments
+                    environmentFiles
+                    autoUpdate
+                    ;
+                }
+                (optionalAttrs (c.userns != null) { inherit (c) userns; })
+                (optionalAttrs (c.user != null) { inherit (c) user; })
+                (optionalAttrs (c.hostPort != null && c.port != null) {
+                  publishPorts = [ "127.0.0.1:${toString c.hostPort}:${toString c.port}" ];
+                })
+                (optionalAttrs c.harden {
+                  noNewPrivileges = true;
+                  dropCapabilities = [ "all" ];
+                })
+                (optionalAttrs (c.networks != [ ]) {
+                  networks = map (n: networks.${n}.ref) c.networks;
+                })
+                c.extraContainerConfig
+              ];
+            }
+          ) cfg;
+        };
+      };
 
     services.nginx.virtualHosts = mapAttrs' (
       _: c:
