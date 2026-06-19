@@ -325,6 +325,9 @@ in
   # ---- native Alloy ----
   environment.etc."alloy/config.alloy".source = alloyConfig;
   services.alloy.enable = true;
+  # Alloy is native (privileged ports 4317/4318) so it lives in system.slice, not
+  # user.slice. Low CPUWeight keeps it from competing with interactive work.
+  systemd.services.alloy.serviceConfig.CPUWeight = 20;
 
   # LAN telemetry senders (behind the home router; no WAN exposure).
   networking.firewall.allowedTCPPorts = [
@@ -336,6 +339,10 @@ in
   home-manager.users.srv.virtualisation.quadlet.containers = {
     prometheus = {
       autoStart = true;
+      serviceConfig = {
+        Slice = "media-batch.slice"; # background scraping — yields to coding + jellyfin
+        CPUWeight = "20";
+      };
       containerConfig = {
         image = "docker.io/prom/prometheus:latest";
         userns = "keep-id:uid=65534,gid=65534"; # prom image runs as nobody
@@ -353,6 +360,10 @@ in
 
     loki = {
       autoStart = true;
+      serviceConfig = {
+        Slice = "media-batch.slice"; # background log indexing — yields to coding + jellyfin
+        CPUWeight = "20";
+      };
       containerConfig = {
         image = "docker.io/grafana/loki:latest";
         userns = "keep-id:uid=10001,gid=10001";
@@ -370,6 +381,10 @@ in
 
     tempo = {
       autoStart = true;
+      serviceConfig = {
+        Slice = "media-batch.slice"; # background trace storage — yields to coding + jellyfin
+        CPUWeight = "20";
+      };
       containerConfig = {
         # Pinned: tempo:latest rejects the standard `compactor` config field
         # ("field compactor not found in type app.Config"). 2.6.1 is known-good.
@@ -392,6 +407,7 @@ in
 
     grafana = {
       autoStart = true;
+      serviceConfig.Slice = "media-interactive.slice"; # interactive UI — wins when user has dashboard open
       containerConfig = {
         image = "docker.io/grafana/grafana:latest";
         userns = "keep-id:uid=472,gid=472"; # grafana image runs as uid 472
