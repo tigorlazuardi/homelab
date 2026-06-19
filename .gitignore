@@ -16,3 +16,6 @@ keys.txt
 
 # direnv
 .direnv/
+
+# tuxedo (todo.txt) lock files
+*.tuxedo-lock
