@@ -1,5 +1,5 @@
-(A) 2026-06-19 Restore Suwayomi library from Jun-18 .tachibk: scp org.suwayomi.tachidesk.auto_2026-06-18_00-00.tachibk off server, then WebUI Settings>Backup>Restore +suwayomi +homelab @laptop @web due:2026-06-22
-(B) 2026-06-19 Verify Suwayomi restore: library/categories/sources present, chapters under wolf/media/manga show downloaded (no re-download) +suwayomi +homelab @web
-2026-06-19 Cleanup stale Suwayomi trees AFTER restore verified (GATED): rm /var/mnt/state/suwayomi/files + /var/mnt/nas/services/suwayomi-server +suwayomi +homelab @server @cleanup
+x 2026-06-19 2026-06-19 Restore Suwayomi library from Jun-18 .tachibk: scp org.suwayomi.tachidesk.auto_2026-06-18_00-00.tachibk off server, then WebUI Settings>Backup>Restore +suwayomi +homelab @laptop @web due:2026-06-22
+x 2026-06-19 2026-06-19 Verify Suwayomi restore: library/categories/sources present, chapters under wolf/media/manga show downloaded (no re-download) +suwayomi +homelab @web
+x 2026-06-19 2026-06-19 Cleanup stale Suwayomi trees AFTER restore verified (GATED): rm /var/mnt/state/suwayomi/files + /var/mnt/nas/services/suwayomi-server +suwayomi +homelab @server @cleanup
 (B) 2026-06-19 Oneshot passwordless nixos-rebuild via dedicated builder user: SSH forced-command key (NEW dedicated pubkey, no shell/no-pty), flake PINNED /home/homeserver/homelab#homeserver, actions whitelisted switch/boot/test/dry-activate read from SSH_ORIGINAL_COMMAND, NOPASSWD sudo scoped to root wrapper script ONLY (not bare nixos-rebuild). Goal: ssh builder@host <action> from own machine non-interactive +homelab +security @server
 
