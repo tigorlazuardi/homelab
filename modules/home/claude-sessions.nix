@@ -43,7 +43,9 @@ let
     { name = "Booth9"; dir = "projects/booth9"; }
     { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; }
     { name = "Sittyba"; dir = "projects/sittyba"; }
-    { name = "Dotfiles"; dir = "dotfiles"; }
+    # config management: the homelab infra repo. ~/dotfiles is being archived
+    # (reference only) → no session for it.
+    { name = "Config Management"; dir = "homelab"; }
     { name = "Chezmoi"; dir = ".local/share/chezmoi"; }
   ];
 
