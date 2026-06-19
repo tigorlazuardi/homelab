@@ -42,16 +42,14 @@ in
               "immich-valkey.service"
             ];
           };
-          # Bulk imports spawn parallel ffmpeg (thumbnail + video transcode) that
-          # peg all 8 threads → load ~18, 100°C thermal throttle, host goes
-          # unresponsive. All immich units join the shared `media.slice` budget
-          # (see services/media-slice.nix) — 50% host ceiling shared with
-          # jellyfin. CPUWeight only decides the split *within* the budget. (Also
-          # lower per-job concurrency in Immich Admin → Job Settings: Thumbnail
+          # Batch media slice: photo import CPU stays under media-batch.slice which
+          # yields to jellyfin (interactive) and homeserver coding sessions. CPUWeight
+          # within the batch slice: server wins over ML for faster thumb generation.
+          # (Also cap per-job concurrency: Immich Admin → Job Settings: Thumbnail
           # Generation + Video Transcoding.)
           serviceConfig = {
-            Slice = "media.slice";
-            CPUWeight = "30"; # server (ffmpeg/thumbs) wins over ML within the budget
+            Slice = "media-batch.slice";
+            CPUWeight = "30"; # server (ffmpeg/thumbs) wins over ML within batch slice
           };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-server:release";
@@ -86,10 +84,10 @@ in
 
         containers.immich-machine-learning = {
           autoStart = true;
-          # ML (face/CLIP) inference also CPU-bound (no GPU). Shares media.slice;
-          # lower weight so the server's transcodes win when both want CPU.
+          # ML (face/CLIP) inference: batch slice, lower weight so server's transcodes
+          # win when both want CPU.
           serviceConfig = {
-            Slice = "media.slice";
+            Slice = "media-batch.slice";
             CPUWeight = "20";
           };
           containerConfig = {
@@ -107,7 +105,7 @@ in
 
         containers.immich-valkey = {
           autoStart = true;
-          serviceConfig.Slice = "media.slice"; # count cache toward the media budget too
+          serviceConfig.Slice = "media-batch.slice"; # cache counts toward the batch budget
           containerConfig = {
             image = "docker.io/valkey/valkey:8-bookworm";
             networks = [ networks.immich.ref ];
@@ -123,7 +121,7 @@ in
 
         containers.immich-postgres = {
           autoStart = true;
-          serviceConfig.Slice = "media.slice"; # db work during import counts too
+          serviceConfig.Slice = "media-batch.slice"; # db work counts toward batch budget
           containerConfig = {
             # vectorchord/pgvecto.rs build Immich requires — keep in lockstep with
             # the server image per Immich's published compose.

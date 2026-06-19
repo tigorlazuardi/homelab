@@ -144,13 +144,13 @@ in
 {
   home.packages = [ claude-rc ];
 
-  # Aggregate CPU ceiling for ALL interactive zellij+claude sessions (+ the
-  # retry daemon): 30% of the 8-thread host (240%). One runaway session
-  # (e.g. claude driving playwright) can't saturate the box or starve
-  # media.slice / system work. Mirrors services/media-slice.nix.
+  # CPU priority for ALL interactive zellij+claude sessions (+ retry daemon).
+  # Global ceiling is user.slice CPUQuota=680% (see modules/cpu-budget.nix) — no
+  # per-slice quota needed. CPUWeight determines share within homeserver's user
+  # session; relative to media services it's governed by user-1000 vs user-1001
+  # weights at the system level (coding gets ≈40% of user.slice when saturated).
   systemd.user.slices.sessions.Slice = {
-    CPUQuota = "240%"; # 30% of 8 threads — shared by every session
-    CPUWeight = "40";  # yields to system/interactive host work under contention
+    CPUWeight = "100"; # default weight; competes fairly within homeserver session
   };
 
   systemd.user.services = lib.listToAttrs (lib.imap0 mkSessionService sessions) // {

@@ -5,11 +5,11 @@
     port = 8081;
     hostPort = 8082; # 8081 taken by container port; publish on host 8082
     uid = 1000;
-    # yt-dlp muxes/transcodes via ffmpeg → media pipeline. Join the shared media
-    # CPU budget (see media-slice.nix). Low weight: batch downloads lose to
-    # jellyfin playback and immich within the 50% budget.
+    # Batch media slice: yt-dlp downloads yield to both jellyfin (interactive) and
+    # homeserver coding sessions (see modules/cpu-budget.nix). CPUWeight within
+    # media-batch.slice governs share vs other batch services (immich).
     serviceConfig = {
-      Slice = "media.slice";
+      Slice = "media-batch.slice";
       CPUWeight = "20";
     };
     volumes = [

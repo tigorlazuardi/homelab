@@ -1,17 +1,28 @@
-# Shared CPU budget for ALL media-processing services (immich, jellyfin, ...).
-# One parent slice with a single ceiling = 40% of the 8-thread host (320%).
-# Members carry NO individual quota — only weights — so the budget floats: if
-# jellyfin is idle, immich's import can use the full 40%, and vice-versa. When
-# both want CPU, CPUWeight decides the split (jellyfin's interactive transcodes
-# beat immich's batch import). The whole group's low CPUWeight also makes media
-# lose to default-weight (100) system/interactive units, keeping the host
-# responsive under load.
+# CPU sub-slices for ALL media services running under the srv user.
+# Both live inside user-1001.slice which gets 60% of the global user.slice budget
+# (see modules/cpu-budget.nix).
 #
-# Add a service to the budget by setting `serviceConfig.Slice = "media.slice"`
-# (helper services) or `serviceConfig.Slice` on the quadlet container.
+# media-interactive.slice (CPUWeight=200): jellyfin.
+#   Live playback transcodes are latency-sensitive. High weight ensures jellyfin wins
+#   over batch jobs and (combined with user-1001's 60% share) wins over coding sessions.
+#   No CPUQuota: transcode is spiky, not sustained — thermal risk is low.
+#
+# media-batch.slice (CPUWeight=10, CPUQuota=240%): ytptube + immich (all containers).
+#   Batch downloads and photo import run sustained → hard quota prevents thermal
+#   issues (immich ffmpeg pegs all cores → 98°C without a ceiling). 240% = 3 threads
+#   max. CPUWeight yields to jellyfin and coding sessions when competing.
+#
+# Add a service:
+#   interactive UI/playback → serviceConfig.Slice = "media-interactive.slice"
+#   batch import/download   → serviceConfig.Slice = "media-batch.slice"
 {
-  home-manager.users.srv.systemd.user.slices.media.Slice = {
-    CPUQuota = "320%"; # 40% of 8 threads — the total media-processing ceiling
-    CPUWeight = "30"; # whole media group yields to system/interactive work
+  home-manager.users.srv.systemd.user.slices = {
+    media-interactive.Slice = {
+      CPUWeight = "200"; # interactive playback wins within srv session
+    };
+    media-batch.Slice = {
+      CPUQuota = "240%"; # 3 threads max — immich sustained ffmpeg caused 98°C without this
+      CPUWeight = "10";  # batch yields to jellyfin and coding sessions
+    };
   };
 }

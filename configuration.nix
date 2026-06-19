@@ -13,6 +13,7 @@
     ./modules/sudo.nix
     ./modules/ssh.nix
     ./modules/users.nix
+    ./modules/cpu-budget.nix
     ./modules/podman.nix
     ./modules/quadlet-service.nix
 
