@@ -42,6 +42,15 @@ in
               "immich-valkey.service"
             ];
           };
+          # Bulk imports spawn parallel ffmpeg (thumbnail + video transcode) that
+          # peg all 8 threads → load ~18, 100°C thermal throttle, host goes
+          # unresponsive. Cap CPU + deprioritize so system/interactive work always
+          # wins; the import just runs slower. (Also lower per-job concurrency in
+          # Immich Admin → Job Settings: Thumbnail Generation + Video Transcoding.)
+          serviceConfig = {
+            CPUQuota = "400%"; # ≤4 of 8 threads
+            CPUWeight = "30"; # loses to default-weight (100) system tasks
+          };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-server:release";
             publishPorts = [ "127.0.0.1:2283:2283" ];
@@ -75,6 +84,12 @@ in
 
         containers.immich-machine-learning = {
           autoStart = true;
+          # ML (face/CLIP) inference also CPU-bound (no GPU). Cap harder than the
+          # server so the two together can't saturate the box.
+          serviceConfig = {
+            CPUQuota = "200%"; # ≤2 of 8 threads
+            CPUWeight = "20";
+          };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-machine-learning:release";
             networks = [ networks.immich.ref ];
