@@ -46,6 +46,11 @@ in
             image = "ghcr.io/immich-app/immich-server:release";
             publishPorts = [ "127.0.0.1:2283:2283" ];
             networks = [ networks.immich.ref ];
+            # Immich backend calls dex server-side (OIDC discovery, token,
+            # userinfo). Rootless pasta can't hairpin to the host's own LAN IP,
+            # so reaching dex via its public URL fails → route it to the host
+            # gateway; nginx serves the dex vhost by SNI/Host header.
+            addHosts = [ "dex.tigor.web.id:host-gateway" ];
             userns = null; # immich-server runs as root-in-userns → host srv
             # HW transcoding (world-rw render node → no extra group needed).
             devices = [ "/dev/dri/renderD128" ];
