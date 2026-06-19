@@ -10,7 +10,7 @@
 # rootless userns (userns=null) maps the full subuid/subgid range, so every gid
 # abc uses resolves and setgroups succeeds. Trade-off: jellyfin writes as a
 # mapped subuid (not srv) — fine, /config is its own and /media is read-only +
-# world-readable. No GPU device → SW transcode for now.
+# world-readable. Intel Quick Sync HW transcode via /dev/dri/renderD128 (see extraContainerConfig).
 {
   homelab.containers.jellyfin = {
     image = "lscr.io/linuxserver/jellyfin:latest";
@@ -24,6 +24,12 @@
     # since jellyfin is the only member.
     serviceConfig = {
       Slice = "media-interactive.slice";
+    };
+    # HW transcoding via Intel Quick Sync (UHD 730). renderD128 is world-rw
+    # (666), same node immich uses — no render-group mapping needed under the
+    # default rootless userns. Enable QSV in Jellyfin Admin → Playback after switch.
+    extraContainerConfig = {
+      devices = [ "/dev/dri/renderD128" ];
     };
     volumes = [
       "/var/mnt/state/jellyfin/config:/config"
