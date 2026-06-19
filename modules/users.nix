@@ -58,6 +58,7 @@
       ./home/systemd-srv.nix
       ./home/tuxedo.nix
       ./home/claude-sessions.nix
+      ./home/comma.nix
     ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
