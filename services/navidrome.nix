@@ -1,7 +1,7 @@
 # Navidrome — music server. Reader: music mounted :ro.
 {
   homelab.containers.navidrome = {
-    image = "deluan/navidrome:latest";
+    image = "docker.io/deluan/navidrome:latest"; # FQ — autoUpdate needs it
     port = 4533;
     uid = 1000;
     user = "1000:1000";

@@ -47,8 +47,12 @@ in
               USERMAP_GID = "1000";
               PAPERLESS_URL = "https://${domain}";
               PAPERLESS_TIME_ZONE = "Asia/Jakarta";
-              PAPERLESS_OCR_LANGUAGE = "ind";
-              PAPERLESS_OCR_LANGUAGES = "ind";
+              # TODO(paperless): restore Indonesian OCR. The :latest image no
+              # longer bundles/installs `ind` tesseract data → startup check
+              # fails. Using eng to unblock; revisit via custom image (FROM
+              # paperless-ngx + tesseract-ocr-ind) or a pinned tag that ships it.
+              PAPERLESS_OCR_LANGUAGE = "eng";
+              PAPERLESS_OCR_LANGUAGES = "eng";
               PAPERLESS_USE_X_FORWARD_HOST = "true";
               PAPERLESS_USE_X_FORWARD_PORT = "true";
               PAPERLESS_PROXY_SSL_HEADER = ''["HTTP_X_FORWARDED_PROTO", "https"]'';

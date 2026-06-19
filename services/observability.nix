@@ -356,7 +356,9 @@ in
     tempo = {
       autoStart = true;
       containerConfig = {
-        image = "docker.io/grafana/tempo:latest";
+        # Pinned: tempo:latest rejects the standard `compactor` config field
+        # ("field compactor not found in type app.Config"). 2.6.1 is known-good.
+        image = "docker.io/grafana/tempo:2.6.1";
         userns = "keep-id:uid=10001,gid=10001";
         publishPorts = [
           "127.0.0.1:${toString tempoHttpPort}:${toString tempoHttpPort}"

@@ -133,6 +133,10 @@ in
         };
         environmentFiles = [ config.sops.secrets."tinyauth.env".path ];
         volumes = [ "/var/mnt/state/tinyauth:/data" ];
+        # Rootless pasta can't hairpin to the host's own LAN IP, so reaching dex
+        # via its public URL (dex.tigor.web.id → host nginx) fails. Route it to
+        # the host gateway; nginx serves the dex vhost by SNI/Host header.
+        extraContainerConfig.addHosts = [ "dex.tigor.web.id:host-gateway" ];
         tmpfiles = [ "d /var/mnt/state/tinyauth 0750 srv srv -" ];
       };
 
@@ -162,7 +166,12 @@ in
           "/var/mnt/state/dex:/var/lib/dex"
           "${config.sops.secrets."dex.yaml".path}:/etc/dex/config.yaml:ro"
         ];
-        extraContainerConfig.exec = "dex serve /etc/dex/config.yaml";
+        extraContainerConfig = {
+          exec = "dex serve /etc/dex/config.yaml";
+          # Reach pocket-id (id.tigor.web.id) via the host gateway — rootless
+          # pasta can't route to the host's own LAN IP for OIDC discovery.
+          addHosts = [ "id.tigor.web.id:host-gateway" ];
+        };
         tmpfiles = [ "d /var/mnt/state/dex 0750 srv srv -" ];
       };
     };

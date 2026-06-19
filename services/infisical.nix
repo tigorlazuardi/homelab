@@ -46,7 +46,10 @@ in
           containerConfig = {
             image = "docker.io/redis:7-alpine";
             networks = [ networks.infisical.ref ];
-            userns = null; # root-in-userns → host srv
+            # redis(999) → host srv via keep-id so it owns /data directly. (userns=null
+            # made it run as root and its entrypoint chown /data needs CAP_CHOWN,
+            # which dropCapabilities=all removes → "chown: .: Operation not permitted".)
+            userns = "keep-id:uid=999,gid=999";
             volumes = [ "/var/mnt/state/infisical/redis:/data" ];
             environments.ALLOW_EMPTY_PASSWORD = "yes";
             healthCmd = "redis-cli ping";

@@ -20,6 +20,9 @@
       "wheel"
       "homeserver"
       "media"
+      # read all journals (incl. srv user-unit logs) without sudo — read-only,
+      # not a privilege escalation. Lets diagnostics run without root.
+      "systemd-journal"
     ];
     shell = pkgs.fish;
     openssh.authorizedKeys.keys = [
