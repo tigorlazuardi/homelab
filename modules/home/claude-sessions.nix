@@ -84,8 +84,11 @@ let
       export PATH="${userPath}:$PATH"
       name=${lib.escapeShellArg s.name}
       ${pkgs.zellij}/bin/zellij delete-session "$name" --force 2>/dev/null || true
+      # NB: --layout with --session means "add a tab to an EXISTING session" and
+      # errors ("There is no active session!") when none exists. Use
+      # --new-session-with-layout to actually create a fresh named session.
       exec ${pkgs.util-linux}/bin/script -qfc \
-        "stty rows 60 cols 250; exec ${pkgs.zellij}/bin/zellij --session \"$name\" --layout ${claudeLayout}" \
+        "stty rows 60 cols 250; exec ${pkgs.zellij}/bin/zellij --session \"$name\" --new-session-with-layout ${claudeLayout}" \
         /dev/null
     '';
 
