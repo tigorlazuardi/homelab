@@ -11,6 +11,8 @@
     # observability (native Alloy gateway + Prometheus/Loki/Tempo/Grafana)
     ./observability.nix
     # rootless app services
+    # shared CPU budget (one slice) for media-processing services: immich + jellyfin
+    ./media-slice.nix
     # *arr media-automation stack
     ./prowlarr.nix
     ./sonarr.nix

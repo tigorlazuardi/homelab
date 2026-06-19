@@ -18,6 +18,14 @@
     subdomain = "jellyfin";
     userns = null; # default rootless userns → full gid range mapped (s6 setgroups)
     harden = false; # linuxserver s6 init needs caps
+    # Share the media-processing CPU budget with immich (see media-slice.nix).
+    # Higher weight than immich: live playback transcodes are latency-sensitive
+    # and must win over immich's batch import when both contend. When immich is
+    # idle, jellyfin can use the full 50% budget on its own.
+    serviceConfig = {
+      Slice = "media.slice";
+      CPUWeight = "100";
+    };
     volumes = [
       "/var/mnt/state/jellyfin/config:/config"
       "/var/mnt/state/jellyfin/cache:/cache"

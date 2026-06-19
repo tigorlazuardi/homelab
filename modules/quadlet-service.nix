@@ -99,6 +99,11 @@ in
               default = { };
               description = "Escape hatch merged into containerConfig.";
             };
+            serviceConfig = mkOption {
+              type = types.attrs;
+              default = { };
+              description = "Merged into the generated unit's [Service] (e.g. Slice, CPUWeight, IOWeight for resource caps).";
+            };
             nginx.extraConfig = mkOption {
               type = types.lines;
               default = "";
@@ -127,6 +132,7 @@ in
     home-manager.users.srv.virtualisation.quadlet.containers = mapAttrs (
       _: c: {
         inherit (c) autoStart;
+        serviceConfig = c.serviceConfig;
         containerConfig = mkMerge [
           {
             inherit (c)
