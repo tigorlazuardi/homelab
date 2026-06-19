@@ -130,6 +130,7 @@ let
       # color support and emit plain text. The script(1) PTY makes isatty pass,
       # but color still needs TERM + COLORTERM. truecolor matches the bars/legend.
       Environment = [ "PATH=${userPath}" "TERM=xterm-256color" "COLORTERM=truecolor" ];
+      Slice = "sessions.slice";
       # Stagger first-start by index so a mass (re)start / reboot doesn't spin up
       # all 9 zellij servers in the same instant (the client/server socket race
       # the watchdog guards against). Cheap; only delays the launch, not claude.
@@ -142,6 +143,15 @@ let
 in
 {
   home.packages = [ claude-rc ];
+
+  # Aggregate CPU ceiling for ALL interactive zellij+claude sessions (+ the
+  # retry daemon): 30% of the 8-thread host (240%). One runaway session
+  # (e.g. claude driving playwright) can't saturate the box or starve
+  # media.slice / system work. Mirrors services/media-slice.nix.
+  systemd.user.slices.sessions.Slice = {
+    CPUQuota = "240%"; # 30% of 8 threads — shared by every session
+    CPUWeight = "40";  # yields to system/interactive host work under contention
+  };
 
   systemd.user.services = lib.listToAttrs (lib.imap0 mkSessionService sessions) // {
     # Claude Retry Monitor — NOT a zellij session. Foreground daemon that talks to
@@ -156,6 +166,7 @@ in
         Environment = "PATH=${userPath}";
         ExecStartPre = "-${pkgs.bun}/bin/bun add -g @tigorhutasuhut/claude-retry@latest";
         ExecStart = "${home}/.bun/bin/claude-retry start";
+        Slice = "sessions.slice";
         Restart = "always";
         RestartSec = 10;
       };
