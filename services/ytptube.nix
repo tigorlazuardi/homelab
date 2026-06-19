@@ -5,6 +5,13 @@
     port = 8081;
     hostPort = 8082; # 8081 taken by container port; publish on host 8082
     uid = 1000;
+    # yt-dlp muxes/transcodes via ffmpeg → media pipeline. Join the shared media
+    # CPU budget (see media-slice.nix). Low weight: batch downloads lose to
+    # jellyfin playback and immich within the 50% budget.
+    serviceConfig = {
+      Slice = "media.slice";
+      CPUWeight = "20";
+    };
     volumes = [
       "/var/mnt/state/ytptube:/config"
       "/var/mnt/wolf/media/youtube:/downloads"
