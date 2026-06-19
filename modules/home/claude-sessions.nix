@@ -81,26 +81,59 @@ let
   # One launcher per session: wipe stale session, then run zellij headless under a
   # PTY (script). The PTY is sized large so a human attaching later isn't capped
   # to a tiny viewport (zellij renders to the smallest attached client).
+  #
+  # Thundering-herd guard: when all units (re)start at once (reboot, or
+  # `systemctl --user restart 'zellij-*'`), 9 zellij servers + claude spin up
+  # together. A client can occasionally connect before its server registers the
+  # named socket and then hang forever in hrtimer_nanosleep — a clean exit would
+  # have let Restart=always recover, but a hang strands the session silently.
+  # So we background zellij and watchdog it: if the session name hasn't appeared
+  # in `list-sessions` within the window, kill it and exit non-zero so systemd
+  # restarts cleanly. (Stagger via ExecStartPre below reduces how often we race.)
   launcher = s:
     pkgs.writeShellScript "zellij-${slug s.name}-launch" ''
       export PATH="${userPath}:$PATH"
       name=${lib.escapeShellArg s.name}
-      ${pkgs.zellij}/bin/zellij delete-session "$name" --force 2>/dev/null || true
+      zj=${pkgs.zellij}/bin/zellij
+      "$zj" delete-session "$name" --force 2>/dev/null || true
       # NB: --layout with --session means "add a tab to an EXISTING session" and
       # errors ("There is no active session!") when none exists. Use
       # --new-session-with-layout to actually create a fresh named session.
-      exec ${pkgs.util-linux}/bin/script -qfc \
-        "stty rows 60 cols 250; exec ${pkgs.zellij}/bin/zellij --session \"$name\" --new-session-with-layout ${claudeLayout}" \
-        /dev/null
+      ${pkgs.util-linux}/bin/script -qfc \
+        "stty rows 60 cols 250; exec \"$zj\" --session \"$name\" --new-session-with-layout ${claudeLayout}" \
+        /dev/null &
+      sp=$!
+      # Watchdog: session must register within ~25s, else the client is wedged.
+      registered=
+      for _ in $(seq 1 25); do
+        sleep 1
+        if "$zj" list-sessions -s 2>/dev/null | grep -qxF "$name"; then
+          registered=1; break
+        fi
+        kill -0 "$sp" 2>/dev/null || break   # script already died → let exit code flow
+      done
+      if [ -z "$registered" ] && ! "$zj" list-sessions -s 2>/dev/null | grep -qxF "$name"; then
+        echo "watchdog: session '$name' never registered; killing for restart" >&2
+        kill "$sp" 2>/dev/null || true
+        exit 1
+      fi
+      wait "$sp"
     '';
 
-  mkSessionService = s: lib.nameValuePair "zellij-${slug s.name}" {
+  mkSessionService = i: s: lib.nameValuePair "zellij-${slug s.name}" {
     Unit.Description = "Persistent zellij + claude session: ${s.name}";
     Install.WantedBy = [ "default.target" ];
     Service = {
       Type = "simple";
       WorkingDirectory = "${home}/${s.dir}";
-      Environment = "PATH=${userPath}";
+      # systemd --user units inherit no TERM; without it claude/zellij detect no
+      # color support and emit plain text. The script(1) PTY makes isatty pass,
+      # but color still needs TERM + COLORTERM. truecolor matches the bars/legend.
+      Environment = [ "PATH=${userPath}" "TERM=xterm-256color" "COLORTERM=truecolor" ];
+      # Stagger first-start by index so a mass (re)start / reboot doesn't spin up
+      # all 9 zellij servers in the same instant (the client/server socket race
+      # the watchdog guards against). Cheap; only delays the launch, not claude.
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep ${toString (i * 2)}";
       ExecStart = "${launcher s}";
       Restart = "always";
       RestartSec = 5;
@@ -110,7 +143,7 @@ in
 {
   home.packages = [ claude-rc ];
 
-  systemd.user.services = lib.listToAttrs (map mkSessionService sessions) // {
+  systemd.user.services = lib.listToAttrs (lib.imap0 mkSessionService sessions) // {
     # Claude Retry Monitor — NOT a zellij session. Foreground daemon that talks to
     # zellij over the CLI (zellij on PATH). Refresh to the newest published version
     # on every (re)start; ignore the upgrade if offline so it still starts.
