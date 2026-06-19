@@ -54,6 +54,7 @@
       ./home/lazygit.nix
       ./home/bun.nix
       ./home/agents.nix
+      ./home/lazyvim
     ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
