@@ -47,6 +47,7 @@ let
     # (reference only) → no session for it.
     { name = "Config Management"; dir = "homelab"; }
     { name = "Chezmoi"; dir = ".local/share/chezmoi"; }
+    { name = "Visual Planner"; dir = "projects/visual-planner"; }
   ];
 
   slug = name: lib.toLower (lib.replaceStrings [ " " ] [ "-" ] name);
