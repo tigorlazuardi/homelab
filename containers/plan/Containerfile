@@ -1,0 +1,40 @@
+# multi-stage build for agent-native/core plan app
+# Stage 1: build (needs gcc/g++/make/python3 for native addons better-sqlite3 + node-pty)
+FROM docker.io/library/node:22-bookworm AS build
+
+RUN corepack enable
+
+WORKDIR /app
+
+# scaffold is fully non-interactive; --yes is npx's confirm flag
+RUN npx --yes @agent-native/core@0.63.4 create my-plans --standalone --template plan
+
+WORKDIR /app/my-plans
+
+# force exact core — scaffold writes a floating "latest" pin that can drift to a version missing the handoff exports
+RUN pnpm add @agent-native/core@0.63.4
+
+RUN pnpm install
+
+RUN pnpm build
+# NOTE: do NOT pnpm prune — keep compiled native addons (better-sqlite3, node-pty)
+
+# Stage 2: slim runtime (same glibc 2.36 ABI as bookworm — native addons are compatible)
+FROM docker.io/library/node:22-bookworm-slim AS runtime
+
+WORKDIR /app/my-plans
+
+COPY --from=build /app/my-plans/.output ./.output
+COPY --from=build /app/my-plans/node_modules ./node_modules
+COPY --from=build /app/my-plans/plans ./plans
+
+RUN mkdir -p /data /plans
+
+# default port (overridable via env from quadlet)
+ENV PORT=3000
+
+USER node
+
+EXPOSE 3000
+
+CMD ["node", ".output/server/index.mjs"]

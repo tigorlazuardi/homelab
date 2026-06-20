@@ -99,6 +99,7 @@ Anything that serves secrets or an admin UI on a public vhost MUST be gated.
 | 7878 | radarr | | 9696 | prowlarr |
 | 6767 | bazarr | | 8096 | jellyfin |
 | — | recyclarr (headless, cron) | | 5055 | seerr |
+| 3050 | plan | | | |
 
 ## Before committing
 

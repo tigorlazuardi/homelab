@@ -22,6 +22,7 @@
     ./recyclarr.nix
     ./jellyfin.nix
     ./seerr.nix
+    ./plan.nix
     ./flaresolverr.nix
     ./searxng.nix
     ./suwayomi.nix
