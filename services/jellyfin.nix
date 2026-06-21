@@ -39,6 +39,8 @@
       "/var/mnt/wolf/media:/media:ro"
       # personal qbit downloads (old instance, on nas) — read-only library.
       "/var/mnt/nas/torrents/downloads:/media-personal:ro"
+      # new qbit downloads
+      "/var/mnt/wolf/torrents:/torrents:ro"
     ];
     environments = {
       TZ = "Asia/Jakarta";
