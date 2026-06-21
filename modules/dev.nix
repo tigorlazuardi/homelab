@@ -16,5 +16,6 @@
     gcc
     nixfmt
     chezmoi
+    oscclip # osc52-copy/osc52-paste — clipboard over terminal escape (SSH-safe)
   ];
 }
