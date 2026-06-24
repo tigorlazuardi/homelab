@@ -8,6 +8,7 @@
     ./modules/watchdog.nix
     ./modules/networking.nix
     ./modules/nix.nix
+    ./modules/maintenance.nix
     ./modules/sops.nix
     ./modules/locale.nix
     ./modules/nix-ld.nix
