@@ -45,10 +45,37 @@ sensitive; treat like interactive if tolerance < 20%.
 Never add a new per-service `CPUQuota` — the global user.slice ceiling already
 caps total usage. Only use `CPUWeight` within the slice to control relative priority.
 
+## Memory containment
+
+CPU weighting alone does NOT stop a memory spike: a batch job (immich ML + ffmpeg)
+ballooning RAM swap-thrashes the whole host until SSH/network die and only a
+power-cycle recovers it. Memory policy mirrors the CPU tiering:
+
+- **`vm.swappiness = 10`** — reclaim before swapping hard (swap is on NVMe; thrash
+  there starves everything).
+- **systemd-oomd**: `enableRootSlice` = swap-exhaustion backstop across all cgroups.
+  Per-slice, only **media-batch** carries `ManagedOOMMemoryPressure = "kill"` so oomd
+  kills the worst batch cgroup on sustained memory PSI — coding/interactive/system
+  are never OOM-managed.
+- **`MemoryHigh` on media-batch** (soft, currently 8G — `TODO(tune)`) throttles the
+  batch tier so it reclaims before pressuring the host. No `MemoryMax` (hard) yet —
+  would OOM-kill immich mid-import; revisit after observing real peaks via below.
+- **`MemoryMin` on sshd + systemd-networkd** — a memory floor for the management
+  plane so SSH stays reachable under pressure (intervene instead of power-cycling).
+- **Hardware watchdog** (`modules/watchdog.nix`) is the last resort: if the host
+  still hangs hard, it auto-reboots instead of waiting for a manual power-cycle.
+
+Same rule of thumb: don't add per-service `MemoryMax`/`MemoryHigh` ad hoc — contain
+at the **batch slice** + trust oomd. Protect only the management plane with
+`MemoryMin`.
+
 ## Implementation files
 
 - `modules/cpu-budget.nix` — system-level user.slice quota + user-N.slice weights
+- `modules/memory-budget.nix` — swappiness + oomd backstop + sshd/networkd MemoryMin
+- `modules/watchdog.nix` — hardware watchdog auto-reboot on hard hang
 - `services/media-slice.nix` — srv user: media-interactive.slice + media-batch.slice
+  (CPU weight/quota **and** MemoryHigh + ManagedOOMMemoryPressure on batch)
 - `modules/home/claude-sessions.nix` — homeserver user: sessions.slice weight
 - `services/jellyfin.nix` — interactive tier (media-interactive.slice)
 - `services/ytptube.nix`, `services/immich.nix` — batch tier (media-batch.slice)
