@@ -9,7 +9,15 @@
     # default route rode the DHCP src. A lease renewal/flap dropped outbound
     # connectivity while services bound to .5 lingered. See systemd.network below.
     useDHCP = false;
-    nameservers = [ "192.168.100.5" ]; # local AdGuard Home
+    # AdGuard (.5) is primary so the host benefits from local ad-blocking and
+    # split-horizon names. 1.1.1.1 is a fallback ONLY for the host's own
+    # resolution: when AdGuard is down the box can still resolve outbound instead
+    # of going fully blind. LAN clients still point at AdGuard, so their filtering
+    # is unaffected.
+    nameservers = [
+      "192.168.100.5"
+      "1.1.1.1"
+    ];
   };
 
   # Static networking via systemd-networkd.
