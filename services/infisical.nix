@@ -25,6 +25,10 @@ in
 
         containers.infisical-postgres = {
           autoStart = true;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/postgres:14-alpine";
             networks = [ networks.infisical.ref ];
@@ -43,6 +47,10 @@ in
 
         containers.infisical-redis = {
           autoStart = true;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/redis:7-alpine";
             networks = [ networks.infisical.ref ];
@@ -61,6 +69,10 @@ in
 
         containers.infisical-backend = {
           autoStart = true;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/infisical/infisical:v0.159.19";
             publishPorts = [ "127.0.0.1:8084:8080" ];

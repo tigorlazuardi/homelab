@@ -15,6 +15,10 @@
         # Config + data migration kept; flip autoStart back to true to re-enable.
         containers.searxng = {
           autoStart = false;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/searxng/searxng:latest";
             publishPorts = [ "127.0.0.1:8080:8080" ];
@@ -38,6 +42,10 @@
 
         containers.searxng-valkey = {
           autoStart = false; # paired with searxng (disabled)
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/valkey/valkey:9-alpine";
             networks = [ networks.searxng.ref ];

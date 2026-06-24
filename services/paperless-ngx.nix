@@ -26,6 +26,10 @@ in
 
         containers.paperless-ngx = {
           autoStart = true;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "ghcr.io/paperless-ngx/paperless-ngx:latest";
             publishPorts = [ "127.0.0.1:8000:8000" ];
@@ -67,6 +71,10 @@ in
 
         containers.paperless-redis = {
           autoStart = true;
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/library/redis:8";
             networks = [ networks.paperless.ref ];

@@ -151,7 +151,13 @@ in
           containers = mapAttrs (
             _: c: {
               inherit (c) autoStart;
-              serviceConfig = c.serviceConfig;
+              serviceConfig = lib.mkMerge [
+                {
+                  Restart = lib.mkDefault "always";
+                  RestartSec = lib.mkDefault "10";
+                }
+                c.serviceConfig
+              ];
               containerConfig = mkMerge [
                 {
                   inherit (c)

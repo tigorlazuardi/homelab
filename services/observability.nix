@@ -355,6 +355,8 @@ in
             serviceConfig = {
               Slice = "media-batch.slice"; # background scraping — yields to coding + jellyfin
               CPUWeight = "20";
+              Restart = "always";
+              RestartSec = "10";
             };
             containerConfig = {
               image = "docker.io/prom/prometheus:latest";
@@ -377,6 +379,8 @@ in
             serviceConfig = {
               Slice = "media-batch.slice"; # background log indexing — yields to coding + jellyfin
               CPUWeight = "20";
+              Restart = "always";
+              RestartSec = "10";
             };
             containerConfig = {
               image = "docker.io/grafana/loki:latest";
@@ -399,6 +403,8 @@ in
             serviceConfig = {
               Slice = "media-batch.slice"; # background trace storage — yields to coding + jellyfin
               CPUWeight = "20";
+              Restart = "always";
+              RestartSec = "10";
             };
             containerConfig = {
               # Pinned: tempo:latest rejects the standard `compactor` config field
@@ -423,7 +429,11 @@ in
 
           grafana = {
             autoStart = true;
-            serviceConfig.Slice = "media-interactive.slice"; # interactive UI — wins when user has dashboard open
+            serviceConfig = {
+            Slice = "media-interactive.slice"; # interactive UI — wins when user has dashboard open
+            Restart = "always";
+            RestartSec = "10";
+          };
             containerConfig = {
               image = "docker.io/grafana/grafana:latest";
               userns = "keep-id:uid=472,gid=472"; # grafana image runs as uid 472

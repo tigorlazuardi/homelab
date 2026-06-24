@@ -50,6 +50,8 @@ in
           serviceConfig = {
             Slice = "media-batch.slice";
             CPUWeight = "30"; # server (ffmpeg/thumbs) wins over ML within batch slice
+            Restart = "always";
+            RestartSec = "10";
           };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-server:release";
@@ -89,6 +91,8 @@ in
           serviceConfig = {
             Slice = "media-batch.slice";
             CPUWeight = "20";
+            Restart = "always";
+            RestartSec = "10";
           };
           containerConfig = {
             image = "ghcr.io/immich-app/immich-machine-learning:release";
@@ -105,7 +109,11 @@ in
 
         containers.immich-valkey = {
           autoStart = true;
-          serviceConfig.Slice = "media-batch.slice"; # cache counts toward the batch budget
+          serviceConfig = {
+            Slice = "media-batch.slice"; # cache counts toward the batch budget
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             image = "docker.io/valkey/valkey:8-bookworm";
             networks = [ networks.immich.ref ];
@@ -121,7 +129,11 @@ in
 
         containers.immich-postgres = {
           autoStart = true;
-          serviceConfig.Slice = "media-batch.slice"; # db work counts toward batch budget
+          serviceConfig = {
+            Slice = "media-batch.slice"; # db work counts toward batch budget
+            Restart = "always";
+            RestartSec = "10";
+          };
           containerConfig = {
             # vectorchord/pgvecto.rs build Immich requires — keep in lockstep with
             # the server image per Immich's published compose.

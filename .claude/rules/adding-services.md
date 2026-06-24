@@ -31,7 +31,9 @@ Helper knobs: `port`/`hostPort` (host loopback; default = port), `subdomain`,
 `uid`/`gid`/`user`, `userns` (null = default rootless), `harden`, `volumes`,
 `environments`, `environmentFiles`, `extraContainerConfig`, `nginx.extraConfig`,
 `tmpfiles`. Defaults: `userns=keep-id:uid=<uid>`, `harden=true` (cap-drop all +
-no-new-privileges), `autoUpdate="registry"`.
+no-new-privileges), `autoUpdate="registry"`, `Restart="always"` + `RestartSec=10`
+(mkDefault — a transient crash/stop self-heals; override via `serviceConfig.Restart`
+for one-shot/cron containers).
 
 ## Multi-container (needs a private network) → write it explicitly
 
