@@ -4,8 +4,8 @@
   # freezes pid1 — petting stops and the hardware timer reboots the box. This
   # automates the manual power-cycle that was previously the only recovery.
   # rebootTime bounds a clean shutdown attempt before the hard reset.
-  systemd.watchdog = {
-    runtimeTime = "20s";
-    rebootTime = "5min";
+  systemd.settings.Manager = {
+    RuntimeWatchdogSec = "20s";
+    RebootWatchdogSec = "5min";
   };
 }

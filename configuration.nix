@@ -5,6 +5,7 @@
 
     # System (flat — one concern per file; files may co-locate system + home-manager)
     ./modules/boot.nix
+    ./modules/watchdog.nix
     ./modules/networking.nix
     ./modules/nix.nix
     ./modules/sops.nix
