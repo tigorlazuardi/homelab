@@ -80,8 +80,11 @@ let
   '';
 
   # One launcher per session: wipe stale session, then run zellij headless under a
-  # PTY (script). The PTY is sized large so a human attaching later isn't capped
-  # to a tiny viewport (zellij renders to the smallest attached client).
+  # PTY (script). zellij renders to the SMALLEST attached client, so the headless
+  # PTY must be sized LARGER than any real terminal a human attaches with —
+  # otherwise it becomes the constraining client and the human sees blank margins
+  # (a too-small 60x250 capped tall/wide terminals). 200x500 exceeds any practical
+  # terminal, so the human client is always the smallest → it fills fully.
   #
   # Thundering-herd guard: when all units (re)start at once (reboot, or
   # `systemctl --user restart 'zellij-*'`), 9 zellij servers + claude spin up
@@ -101,7 +104,7 @@ let
       # errors ("There is no active session!") when none exists. Use
       # --new-session-with-layout to actually create a fresh named session.
       ${pkgs.util-linux}/bin/script -qfc \
-        "stty rows 60 cols 250; exec \"$zj\" --session \"$name\" --new-session-with-layout ${claudeLayout}" \
+        "stty rows 200 cols 500; exec \"$zj\" --session \"$name\" --new-session-with-layout ${claudeLayout}" \
         /dev/null &
       sp=$!
       # Watchdog: session must register within ~25s, else the client is wedged.
