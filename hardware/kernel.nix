@@ -25,6 +25,11 @@
   fileSystems."/var/mnt/nas" = {
     label = "WD_RED_4T_1";
     fsType = "ext4";
+    # nas is a dying disk (failing SMART) holding only disposable downloads. Fail
+    # soft: a dead/slow nas must not block boot or drop the headless host to
+    # emergency mode (= remote lockout). nofail + a short device-timeout keep the
+    # host booting and reachable so we can intervene.
+    options = [ "nofail" "x-systemd.device-timeout=10s" ];
   };
 
   fileSystems."/var/mnt/wolf" = {
