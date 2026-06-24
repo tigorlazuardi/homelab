@@ -10,6 +10,8 @@
     ./auth.nix
     # observability (native Alloy gateway + Prometheus/Loki/Tempo/Grafana)
     ./observability.nix
+    # below: cgroup v2 time-travel resource monitor + ttyd browser TUI
+    ./below.nix
     # rootless app services
     # shared CPU budget (one slice) for media-processing services: immich + jellyfin
     ./media-slice.nix

@@ -87,6 +87,16 @@
       "fieldConfig": { "defaults": { "unit": "celsius", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 70 }, { "color": "red", "value": 85 } ] } }, "overrides": [] },
       "options": { "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } },
       "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "max(node_hwmon_temp_celsius)" } ]
+    },
+    {
+      "type": "text", "title": "below — process per slice (live)",
+      "id": 10,
+      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 20 },
+      "datasource": null,
+      "options": {
+        "mode": "html",
+        "content": "<iframe src=\"/below/\" style=\"width:100%;height:700px;border:0\"></iframe>"
+      }
     }
   ]
 }

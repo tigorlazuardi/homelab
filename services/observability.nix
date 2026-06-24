@@ -445,6 +445,7 @@ in
                 GF_AUTH_ANONYMOUS_ENABLED = "true";
                 GF_AUTH_ANONYMOUS_ORG_ROLE = "Viewer";
                 GF_AUTH_ANONYMOUS_HIDE_VERSION = "true";
+                GF_PANELS_DISABLE_SANITIZE_HTML = "true";
               };
               noNewPrivileges = true;
               dropCapabilities = [ "all" ];
@@ -481,6 +482,13 @@ in
     locations."= /".extraConfig = ''
       return 302 /d/system-perf/system-performance?kiosk&theme=dark;
     '';
+    # No trailing slash on proxyPass: forward the full /below/ URI unchanged so it
+    # matches ttyd's --base-path /below (a trailing slash would strip the prefix
+    # and 404 ttyd's assets/websocket).
+    locations."/below/" = {
+      proxyPass = "http://127.0.0.1:7681";
+      proxyWebsockets = true;
+    };
     locations."/".proxyPass = "http://127.0.0.1:${toString grafanaHostPort}";
   };
 }
