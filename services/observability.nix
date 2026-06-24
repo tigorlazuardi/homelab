@@ -128,6 +128,67 @@ let
     ];
   };
 
+  # Provisioned alert rules → Telegram (via the default notification policy in
+  # grafana-telegram.yaml). Covers the failure modes that have actually bitten:
+  # disk near-full (wolf hit 87%), CPU thermal (immich ffmpeg hit 98°C), and
+  # memory-pressure thrash (the outage that needed a power-cycle).
+  alertRule = uid: title: severity: forDur: expr: op: threshold: summary: {
+    inherit uid title;
+    condition = "C";
+    for = forDur;
+    labels.severity = severity;
+    annotations.summary = summary;
+    noDataState = "OK";
+    execErrState = "OK";
+    data = [
+      {
+        refId = "A";
+        relativeTimeRange = { from = 600; to = 0; };
+        datasourceUid = "prometheus";
+        model = { refId = "A"; instant = true; expr = expr; };
+      }
+      {
+        refId = "C";
+        datasourceUid = "__expr__";
+        model = {
+          refId = "C";
+          type = "threshold";
+          expression = "A";
+          conditions = [ { evaluator = { type = op; params = [ threshold ]; }; } ];
+        };
+      }
+    ];
+  };
+
+  grafanaAlertRules = yaml.generate "alert-rules.yaml" {
+    apiVersion = 1;
+    groups = [
+      {
+        orgId = 1;
+        name = "infra";
+        folder = "Infra";
+        interval = "1m";
+        rules = [
+          (alertRule "disk-full" "Disk usage >85%" "warning" "10m"
+            ''(1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|overlay|squashfs|fuse.*"} / node_filesystem_size_bytes) * 100''
+            "gt" 85 "{{ $labels.mountpoint }} at {{ $values.A.Value }}% used on {{ $labels.instance }}")
+          (alertRule "disk-critical" "Disk usage >93%" "critical" "5m"
+            ''(1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|overlay|squashfs|fuse.*"} / node_filesystem_size_bytes) * 100''
+            "gt" 93 "CRITICAL: {{ $labels.mountpoint }} at {{ $values.A.Value }}% used")
+          (alertRule "high-temp" "Hardware temp >85C" "warning" "5m"
+            "max(node_hwmon_temp_celsius)"
+            "gt" 85 "A sensor reads {{ $values.A.Value }}°C (CPU thermal risk)")
+          (alertRule "mem-pressure" "Sustained memory pressure" "warning" "5m"
+            "rate(node_pressure_memory_waiting_seconds_total[5m])"
+            "gt" 0.2 "Memory PSI stall rate {{ $values.A.Value }} — swap-thrash risk")
+          (alertRule "low-mem" "MemAvailable <500MB" "warning" "5m"
+            "node_memory_MemAvailable_bytes"
+            "lt" 524288000 "Only {{ $values.A.Value }} bytes available")
+        ];
+      }
+    ];
+  };
+
   # Native Alloy: OTLP gateway + host node metrics + journald.
   alloyConfig = pkgs.writeText "config.alloy" ''
     // ---- OTLP ingestion (apps) ----
@@ -443,6 +504,7 @@ in
                 "/var/mnt/state/grafana:/var/lib/grafana"
                 "${grafanaDatasources}:/etc/grafana/provisioning/datasources/datasources.yaml:ro"
                 "${grafanaTelegramPath}:/etc/grafana/provisioning/alerting/telegram.yaml:ro"
+                "${grafanaAlertRules}:/etc/grafana/provisioning/alerting/alert-rules.yaml:ro"
                 "${grafanaAdminPwPath}:/run/secrets/grafana_admin_password:ro"
                 "${grafanaDashboardsProvider}:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro"
                 "${./grafana-dashboards/system-performance.json}:/etc/grafana/provisioning/dashboards/json/system-performance.json:ro"
