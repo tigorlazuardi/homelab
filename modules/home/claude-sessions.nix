@@ -43,13 +43,17 @@ let
   userPath = "${home}/.bun/bin:/etc/profiles/per-user/homeserver/bin:/run/current-system/sw/bin:/usr/bin:/bin";
 
   # Durable sessions: friendly zellij/remote-control name → project dir (rel home).
+  # `enable = false` keeps the entry but skips generating its unit (HM stops the
+  # running service on switch) — frees RAM without losing the config; flip back to
+  # re-enable. Disabled set chosen during the RAM-pressure review (9 sessions ate
+  # 6.8 GB → 6.7 GB swapped); these 4 are the least-active projects.
   sessions = [
     { name = "Wallrus"; dir = "projects/wallrus"; }
-    { name = "Commercelator"; dir = "projects/commercelator-template"; }
+    { name = "Commercelator"; dir = "projects/commercelator-template"; enable = false; }
     { name = "Claude Retry Development"; dir = "projects/claude-retry"; }
-    { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; }
-    { name = "Booth9"; dir = "projects/booth9"; }
-    { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; }
+    { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; enable = false; }
+    { name = "Booth9"; dir = "projects/booth9"; enable = false; }
+    { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; enable = false; }
     { name = "Sittyba"; dir = "projects/sittyba"; }
     # config management: the homelab infra repo. ~/dotfiles is being archived
     # (reference only) → no session for it. `mcp` loads the grafana MCP token so
@@ -176,7 +180,7 @@ in
     CPUWeight = "100"; # default weight; competes fairly within homeserver session
   };
 
-  systemd.user.services = lib.listToAttrs (lib.imap0 mkSessionService sessions) // {
+  systemd.user.services = lib.listToAttrs (lib.imap0 mkSessionService (lib.filter (s: s.enable or true) sessions)) // {
     # Claude Retry Monitor — NOT a zellij session. Foreground daemon that talks to
     # zellij over the CLI (zellij on PATH). Refresh to the newest published version
     # on every (re)start; ignore the upgrade if offline so it still starts.
