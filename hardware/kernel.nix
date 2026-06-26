@@ -35,6 +35,10 @@
   fileSystems."/var/mnt/wolf" = {
     label = "WOLF_4T_1";
     fsType = "ext4";
+    # Data-only HDD (bulk media + arr downloads). A dead/slow wolf must never block
+    # boot or drop the headless host to emergency mode (= remote lockout) — fail
+    # soft like nas so the host stays reachable to intervene. Data is replaceable.
+    options = [ "nofail" "x-systemd.device-timeout=10s" ];
   };
 
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

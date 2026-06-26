@@ -112,6 +112,12 @@
                   mountOptions = [
                     "compress=zstd"
                     "noatime"
+                    # Fail soft: a dead/slow fenrir must not block boot or drop the
+                    # headless host to emergency mode (= remote lockout). immich/
+                    # paperless fail without it, but the host stays reachable to
+                    # intervene — better than a console-only lockout.
+                    "nofail"
+                    "x-systemd.device-timeout=10s"
                   ];
                   mountpoint = "/var/mnt/fenrir";
                 };
