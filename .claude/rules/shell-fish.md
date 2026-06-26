@@ -35,3 +35,17 @@ User's interactive login shell is **fish**. Default everywhere on this host.
   spaces/unicode (youtube/media filenames).
 - When a one-liner needs heredocs, `trap`, complex arrays, or `set -euo pipefail`
   semantics → stop fighting fish, write a `#!/usr/bin/env bash` script file instead.
+
+## Tool not installed → comma for one-off, systemPackages for recurring
+
+Host has `,` (comma, from nix-index). Handing the user a command whose tool may
+not be installed:
+
+- **One-off / inspection** (`dmidecode`, `lshw`, `pciutils`, …) → `, <tool> <args>`
+  runs it ephemerally from nixpkgs, no install. Prereq: the nix-index DB is
+  populated (`nix-index` run at least once); stale/empty DB → comma can't find it.
+- **Recurring** → add to `environment.systemPackages` (`modules/cli.nix`) instead;
+  don't make the user comma the same tool every session. (`dmidecode` was promoted
+  this way once it became a repeat need.)
+- Don't tell the user "command not found" and stop — reach for `,` first, then
+  decide if it earns a permanent spot.
