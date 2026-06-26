@@ -16,22 +16,30 @@ in
           "10.0.0.1" # wireguard gateway
         ];
         port = 53;
+        # DoH only (TCP/443). DoQ (quic://, UDP/853) is intermittently dead on
+        # this ISP — "no recent network activity" handshake timeouts — and with a
+        # non-parallel mode a dead QUIC endpoint fails the query outright.
         upstream_dns = [
-          "quic://dns.adguard-dns.com"
           "https://dns.adguard-dns.com/dns-query"
-          "quic://cloudflare-dns.com"
           "https://cloudflare-dns.com/dns-query"
         ];
         bootstrap_dns = [
           "94.140.14.14"
           "1.1.1.1"
         ];
-        upstream_mode = "load_balance";
+        # parallel: race all upstreams, take the fastest — one slow/dead upstream
+        # no longer stalls or fails the query (load_balance picked exactly one).
+        upstream_mode = "parallel";
         cache_enabled = true;
         cache_size = 4194304;
         cache_optimistic = true;
         enable_dnssec = true;
-        use_private_ptr_resolvers = true;
+        # Private reverse (PTR) resolution OFF: the system resolver (127.0.0.53)
+        # forwards back to AdGuard (192.168.100.5 is resolved's uplink), so private
+        # PTR lookups looped AdGuard→resolved→AdGuard until a 2s timeout — flooding
+        # errors and stalling every LAN reverse lookup. No LAN reverse zone exists
+        # anyway; answer NXDOMAIN locally and instantly.
+        use_private_ptr_resolvers = false;
       };
       tls.enabled = false;
       filters = [
