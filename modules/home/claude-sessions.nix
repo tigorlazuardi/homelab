@@ -134,7 +134,15 @@ let
     '';
 
   mkSessionService = i: s: lib.nameValuePair "zellij-${slug s.name}" {
-    Unit.Description = "Persistent zellij + claude session: ${s.name}";
+    Unit = {
+      Description = "Persistent zellij + claude session: ${s.name}";
+      # Start AFTER the zellij web server so the session registers as web-shareable
+      # (a session created while the web server is down rejects web attach — "not
+      # allowed to attach to this session"). zellij-web is defined in
+      # services/zellij-web.nix.
+      After = [ "zellij-web.service" ];
+      Wants = [ "zellij-web.service" ];
+    };
     Install.WantedBy = [ "default.target" ];
     Service = {
       Type = "simple";
