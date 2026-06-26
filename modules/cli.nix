@@ -18,5 +18,7 @@
 
     infisical
     just
+
+    dmidecode # SMBIOS/DMI decoder — inspect RAM slots, board, firmware
   ];
 }
