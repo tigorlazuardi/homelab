@@ -37,8 +37,8 @@ in
       "wireguard/clients/envy/private_key"
     ] (_: opts);
 
-  # Client configs rendered to /var/lib/wireguard-configs (used by the auth-gated
-  # download page restored in the auth wave — see TODO below).
+  # Client configs rendered to /var/lib/wireguard-configs (served by the
+  # tinyauth-gated download page below).
   sops.templates = builtins.listToAttrs (
     map (client: {
       name = "wireguard-client-${client.name}.conf";
