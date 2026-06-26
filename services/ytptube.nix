@@ -26,6 +26,10 @@
       "d /var/mnt/state/ytptube 0750 srv srv -"
       "d /var/mnt/wolf/media/youtube 2775 srv media -"
     ];
+    # Gate whole vhost behind tinyauth SSO (see services/auth.nix). ytptube
+    # exposes a download-trigger API on the same vhost; no external bookmarklet
+    # poster relies on it, so the full vhost is gated. Browser carries the SSO
+    # cookie, so the GUI websocket works once authed.
+    auth = true;
   };
-  # TODO(auth wave): re-add auth gate.
 }
