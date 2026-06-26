@@ -2,7 +2,7 @@
   "mcpServers": {
     "grafana": {
       "command": "uvx",
-      "args": ["mcp-grafana"],
+      "args": ["mcp-grafana@0.17.0"],
       "env": {
         "GRAFANA_URL": "http://127.0.0.1:3300",
         "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_SERVICE_ACCOUNT_TOKEN}"
