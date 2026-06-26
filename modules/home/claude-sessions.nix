@@ -25,10 +25,18 @@
   pkgs,
   config,
   lib,
+  osConfig,
   ...
 }:
 let
   home = config.home.homeDirectory;
+
+  # Grafana MCP token, decrypted by system sops (declared in modules/users.nix),
+  # owned by homeserver so this systemd --user service can read it. Loaded as an
+  # EnvironmentFile only on the session(s) flagged `mcp` below — claude inherits
+  # GRAFANA_SERVICE_ACCOUNT_TOKEN and its .mcp.json expands it. Token never enters
+  # the nix store (EnvironmentFile is read at unit start, not eval).
+  grafanaMcpEnvFile = osConfig.sops.secrets."grafana-mcp.env".path;
 
   # PATH for the units: bun global bin (claude-retry), the user profile (claude,
   # zellij, fish), and the system profile.
@@ -44,8 +52,9 @@ let
     { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; }
     { name = "Sittyba"; dir = "projects/sittyba"; }
     # config management: the homelab infra repo. ~/dotfiles is being archived
-    # (reference only) → no session for it.
-    { name = "Config Management"; dir = "homelab"; }
+    # (reference only) → no session for it. `mcp` loads the grafana MCP token so
+    # claude here can query Grafana via .mcp.json.
+    { name = "Config Management"; dir = "homelab"; mcp = true; }
     { name = "Chezmoi"; dir = ".local/share/chezmoi"; }
     { name = "Visual Planner"; dir = "projects/visual-planner"; }
   ];
@@ -134,6 +143,8 @@ let
       # color support and emit plain text. The script(1) PTY makes isatty pass,
       # but color still needs TERM + COLORTERM. truecolor matches the bars/legend.
       Environment = [ "PATH=${userPath}" "TERM=xterm-256color" "COLORTERM=truecolor" ];
+      # Sessions flagged `mcp` get the grafana token via sops EnvironmentFile.
+      EnvironmentFile = lib.optional (s.mcp or false) grafanaMcpEnvFile;
       Slice = "sessions.slice";
       # Stagger first-start by index so a mass (re)start / reboot doesn't spin up
       # all 9 zellij servers in the same instant (the client/server socket race

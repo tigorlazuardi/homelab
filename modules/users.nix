@@ -6,6 +6,18 @@
     sopsFile = ../secrets/users.yaml;
   };
 
+  # Grafana service-account token for the grafana MCP server. Consumed by the
+  # homeserver "Config Management" zellij/claude session as an EnvironmentFile
+  # (wired in home/claude-sessions.nix via osConfig) so claude's .mcp.json can
+  # read ${GRAFANA_SERVICE_ACCOUNT_TOKEN} without the token ever hitting the repo
+  # or the nix store. owner=homeserver → the systemd --user service can read it.
+  sops.secrets."grafana-mcp.env" = {
+    sopsFile = ../secrets/grafana-mcp.env;
+    format = "dotenv";
+    key = "";
+    owner = "homeserver";
+  };
+
   users.groups = {
     homeserver = { };
     srv = { };
