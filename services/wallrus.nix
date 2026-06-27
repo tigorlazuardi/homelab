@@ -14,19 +14,16 @@
     image = "ghcr.io/tigorlazuardi/wallrus:latest";
     port = 5173;
     uid = 1000;
-    harden = false; # entrypoint setpriv-drops privileges → needs caps
-    # The image's docker-entrypoint.sh starts as root and setpriv-drops to
-    # PUID/PGID. Under the default keep-id:uid=1000 userns the process starts as
-    # 1000 (not root) and setgroups is denied → `setpriv: setgroups failed:
-    # Operation not permitted` → exit 127 crash-loop. Run in the default rootless
-    # userns (container root → host srv 1001, which owns /var/mnt/state/wallrus)
-    # and keep PUID/PGID=0 so the entrypoint stays root-in-userns (= srv) with no
-    # privilege drop. Confirmed working: `bun ... serve` listens on :5173.
-    userns = null;
+    harden = false; # entrypoint may chown the data dir on the classic-docker path
+    # keep-id:uid=1000 (helper default) → the container runs as host srv (1001),
+    # which owns /var/mnt/state/wallrus. The image entrypoint (>= 66c7c7e) detects
+    # it is already non-root and skips the setpriv privilege-drop, so no userns
+    # workaround is needed. (An earlier image setpriv-dropped unconditionally and
+    # crash-looped here with `setpriv: setgroups failed` — fixed image-side.)
     volumes = [ "/var/mnt/state/wallrus:/data/wallrus" ];
     environments = {
-      PUID = "0";
-      PGID = "0";
+      PUID = "1000";
+      PGID = "1000";
       WALLRUS_LISTEN_ADDR = "0.0.0.0:5173";
       WALLRUS_TRUST_PROXY = "true";
       WALLRUS_DATA_DIR = "/data/wallrus";
