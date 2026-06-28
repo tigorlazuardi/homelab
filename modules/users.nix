@@ -59,6 +59,29 @@
     autoSubUidGidRange = true;
   };
 
+  # homeserver → srv without a password. srv is treated as a tighter-permission
+  # sub-account of the human user: it owns all rootless containers, so the operator
+  # drives `sudo -u srv XDG_RUNTIME_DIR=/run/user/1001 podman …` constantly.
+  # Scoped to runAs=srv only (NOT root) — this grants the human user the srv
+  # identity, never privilege escalation to root. SETENV lets the inline
+  # XDG_RUNTIME_DIR=… survive sudo's env reset. (cd /tmp first — srv can't chdir
+  # into homeserver's 0700 home; see .claude/rules/srv-podman.md.)
+  security.sudo.extraRules = [
+    {
+      users = [ "homeserver" ];
+      runAs = "srv";
+      commands = [
+        {
+          command = "ALL";
+          options = [
+            "NOPASSWD"
+            "SETENV"
+          ];
+        }
+      ];
+    }
+  ];
+
   # Per-user Home Manager scaffold (global settings live in configuration.nix).
   home-manager.users.homeserver = {
     imports = [
