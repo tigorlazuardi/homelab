@@ -36,12 +36,17 @@
     tmpfiles = [ "d /var/mnt/state/wallrus 2775 srv media -" ];
   };
 
-  # Push-to-deploy: webhook (root) restarts the rootless srv user unit.
-  # TODO(cutover): verify the --machine user-bus restart works under linger.
+  # Push-to-deploy: webhook (root) pulls + restarts the rootless srv user unit.
+  # Both steps run AS srv (runuser → srv's user bus via XDG_RUNTIME_DIR). The pull
+  # MUST happen in srv's rootless image store — a root-side `podman pull` lands in
+  # root's store and the srv unit never sees the new image (the bug that left the
+  # container stale across deploys). On restart the quadlet unit re-resolves
+  # :latest from srv's now-updated store. linger keeps /run/user/1001 alive at boot.
   services.webhook.hooks."deploy-wallrus" = {
     execute-command = "${pkgs.writeShellScript "deploy-wallrus" ''
-      ${pkgs.podman}/bin/podman --remote=false pull ghcr.io/tigorlazuardi/wallrus:latest || true
-      ${pkgs.systemd}/bin/systemctl --user --machine=srv@.host restart wallrus.service
+      runuser='${pkgs.util-linux}/bin/runuser -u srv -- env XDG_RUNTIME_DIR=/run/user/1001'
+      $runuser ${pkgs.podman}/bin/podman pull ghcr.io/tigorlazuardi/wallrus:latest || true
+      $runuser ${pkgs.systemd}/bin/systemctl --user restart wallrus.service
     ''}";
     response-message = "Wallrus deployment triggered";
   };
