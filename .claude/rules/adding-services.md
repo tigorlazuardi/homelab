@@ -72,6 +72,16 @@ Anything that serves secrets or an admin UI on a public vhost MUST be gated.
 - **s6 / linuxserver / jlesage images** init as root and need caps → set
   `harden = false`. Either `userns = null` (run as root-in-userns → host srv, set
   `USER_ID=0`) or `keep-id:uid=<PUID>` with `PUID`/`PGID`.
+- **su-exec / gosu privilege-drop images crash rootless** with
+  `su-exec: setgroups: Operation not permitted`. The image entrypoint drops privs
+  by calling `setgroups()`, which this host's rootless userns denies (NixOS
+  `newgidmap` is a caps-wrapper, not setuid → `setgroups=deny`); `harden = false`
+  does NOT fix it. **Bypass the entrypoint**: run the image's real CMD directly as
+  the target uid. Find the CMD with `, skopeo inspect --config` (see
+  [[inspect-container-image]]), then set `user = "<uid>:<gid>"` +
+  `extraContainerConfig = { entrypoint = "<bin>"; exec = "<args>"; }`. keep-id maps
+  the uid → host srv, and the image's `/app` (+ mounted dirs owned by that uid) are
+  already correct, so the entrypoint's chown is moot. n9router is the worked example.
 - **Reader vs writer.** Media consumers mount data `:ro` (e.g. jellyfin,
   navidrome); only downloaders/importers get `:rw`. Never give a reader write.
 - **Networking.** Publish to `127.0.0.1` only — nginx is the sole ingress.

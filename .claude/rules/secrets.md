@@ -30,6 +30,14 @@ This is a **public** repo. Only sops-encrypted files may be committed.
   `environmentFiles = [ config.sops.secrets."x".path ]`.
 - In a multi-container service file, capture the secret path from the **system**
   `config` in an outer `let` (the `home-manager.users.srv` block shadows `config`).
+- **Mounted-config secrets do NOT hot-reload — restart the container.** When a
+  secret is mounted as a config FILE into a long-running container (e.g.
+  `secrets/dex.yaml` → dex), editing + re-encrypting it and running
+  `nixos-rebuild switch` re-renders the decrypted file but does **not** restart the
+  container, so the app keeps serving the OLD config (symptom: dex "client secret is
+  not valid" / missing client after you added one). Restart it explicitly:
+  `cd /tmp; sudo -u srv XDG_RUNTIME_DIR=/run/user/1001 systemctl --user restart <unit>.service`
+  (see [[run-as-srv]]), then confirm via the app's startup log.
 
 ## Format / new secrets
 
