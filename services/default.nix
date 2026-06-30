@@ -33,6 +33,7 @@
     ./ytptube.nix
     ./jdownloader.nix
     ./navidrome.nix
+    ./n9router.nix
     ./qbittorrent.nix
     ./immich.nix
     ./paperless-ngx.nix
