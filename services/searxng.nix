@@ -11,13 +11,17 @@
       virtualisation.quadlet = {
         networks.searxng = { };
 
-        # DISABLED pending CPU investigation (old deploy's searxng was CPU-hungry).
-        # Config + data migration kept; flip autoStart back to true to re-enable.
+        # Re-enabled. The original disable was a CPU-greed concern; the CPU budget
+        # tiering (modules/cpu-budget.nix + .claude/rules/cpu-priority.md) now caps
+        # it — placed in media-batch.slice so a query storm yields to jellyfin and
+        # coding sessions instead of starving the host. Bump to media-interactive
+        # if interactive search latency under load becomes annoying.
         containers.searxng = {
-          autoStart = false;
+          autoStart = true;
           serviceConfig = {
             Restart = "always";
             RestartSec = "10";
+            Slice = "media-batch.slice";
           };
           containerConfig = {
             image = "docker.io/searxng/searxng:latest";
@@ -41,10 +45,11 @@
         };
 
         containers.searxng-valkey = {
-          autoStart = false; # paired with searxng (disabled)
+          autoStart = true; # paired with searxng
           serviceConfig = {
             Restart = "always";
             RestartSec = "10";
+            Slice = "media-batch.slice";
           };
           containerConfig = {
             image = "docker.io/valkey/valkey:9-alpine";
