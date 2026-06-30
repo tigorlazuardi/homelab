@@ -2,8 +2,14 @@
 # providers with auto-fallback. Coding tools point here instead of each provider.
 # Public vhost; dashboard gated by n9router native OIDC (→ dex static client "9router",
 # configured in the n9router UI at runtime); proxy API gated by API key
-# (REQUIRE_API_KEY). Entrypoint runs as root → chown -R node:node /app/data → su-exec
-# node (uid 1000); needs caps, so harden = false. sqlite db on state tier.
+# (REQUIRE_API_KEY). sqlite db on state tier.
+#
+# The image's /entrypoint.sh does `chown … && su-exec node`, but su-exec's setgroups()
+# is denied in this rootless userns (NixOS newgidmap isn't setuid → setgroups=deny),
+# crashing the container with "su-exec: setgroups: Operation not permitted". Bypass it:
+# run the real CMD (`node custom-server.js`) directly as uid 1000. keep-id maps 1000 →
+# host srv, and /app + the mounted /app/data are already owned by 1000, so the
+# entrypoint's chown is unnecessary. No privilege drop → harden stays on (default).
 { config, ... }:
 {
   sops.secrets."n9router.env" = {
@@ -18,7 +24,15 @@
     port = 20128;
     subdomain = "9router";
     uid = 1000; # node user → keep-id → host srv
-    harden = false; # entrypoint chowns + su-exec node; needs CHOWN/SETUID/SETGID
+    user = "1000:1000"; # run as node directly (bypass su-exec; see header)
+    extraContainerConfig = {
+      entrypoint = "node"; # skip /entrypoint.sh (su-exec setgroups fails rootless)
+      exec = "custom-server.js"; # image CMD; WorkingDir /app from image
+      # OIDC discovery/token to dex happen server-side; rootless pasta can't hairpin
+      # to the host's own public IP, so route dex.tigor.web.id to the host gateway —
+      # nginx serves the dex vhost by Host header (same trick as tinyauth/dex).
+      addHosts = [ "dex.tigor.web.id:host-gateway" ];
+    };
     volumes = [ "/var/mnt/state/n9router:/app/data" ];
     environments = {
       TZ = "Asia/Jakarta";
