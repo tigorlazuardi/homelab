@@ -37,8 +37,11 @@
       "/var/mnt/state/jellyfin/cache:/cache"
       # library is read-only to Jellyfin — arr owns writes. Matches new layout.
       "/var/mnt/wolf/media:/media:ro"
-      # personal qbit downloads (old instance, on nas) — read-only library.
-      "/var/mnt/nas/torrents/downloads:/media-personal:ro"
+      # NOTE: personal qbit library on nas (/media-personal) removed 2026-07-03 —
+      # nas (sdc, WD) is dying with 36 pending sectors; jellyfin's boot library
+      # scan of it kept hitting UNC reads → ATA link resets → host-wide I/O stall
+      # → SSH/network dead → physical reboot. See modules/disk-error-recovery.nix.
+      # Remove the stale "media-personal" library in Jellyfin Admin → Libraries.
       # new qbit downloads
       "/var/mnt/wolf/torrents:/torrents:ro"
     ];
