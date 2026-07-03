@@ -73,8 +73,20 @@
     "d /var/mnt/state/searxng/valkey 0750 srv srv -"
   ];
 
+  # Private vhost: LAN + wireguard VPN only, no internet exposure. No tinyauth so
+  # the JSON API (?format=json) stays callable from allowed IPs. Container peers do
+  # NOT use this path — they join the `searxng` podman network and hit
+  # http://searxng:8080 directly (see .claude/rules/container-networking.md).
   services.nginx.virtualHosts."searxng.tigor.web.id" = {
     forceSSL = true;
-    locations."/".proxyPass = "http://127.0.0.1:8080";
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:8080";
+      extraConfig = ''
+        allow 192.168.100.0/24;  # LAN
+        allow 10.0.0.0/24;       # wireguard VPN
+        allow 127.0.0.1;
+        deny all;
+      '';
+    };
   };
 }
