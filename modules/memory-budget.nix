@@ -8,6 +8,14 @@
 {
   boot.kernel.sysctl."vm.swappiness" = 10;
 
+  # Bound dirty-page writeback so ONE stalled disk (a dying HDD retrying bad
+  # sectors) can't fill RAM with un-flushable dirty pages and trip the host-wide
+  # write throttle that previously starved SSH/network (see
+  # modules/disk-error-recovery.nix). Absolute caps replace the %-based defaults
+  # (dirty_ratio 20% ≈ 3 GB on this 16 GB host); setting *_bytes auto-zeros *_ratio.
+  boot.kernel.sysctl."vm.dirty_bytes" = 268435456; # 256 MiB
+  boot.kernel.sysctl."vm.dirty_background_bytes" = 67108864; # 64 MiB
+
   systemd.oomd = {
     enable = true;
     enableRootSlice = true; # swap-exhaustion backstop across all cgroups

@@ -17,6 +17,7 @@
     ./modules/users.nix
     ./modules/cpu-budget.nix
     ./modules/memory-budget.nix
+    ./modules/disk-error-recovery.nix
     ./modules/podman.nix
     ./modules/quadlet-service.nix
 
