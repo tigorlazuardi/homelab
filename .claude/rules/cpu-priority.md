@@ -9,7 +9,7 @@ per-service quotas needed. Higher effective weight = more CPU when competing.
 | Tier | Who | CPUWeight path | Effective share (saturated) |
 |---|---|---|---|
 | **Interactive** | jellyfin (active stream) | user-1001(150) × media-interactive(200) | ≈57% |
-| **Coding** | zellij + claude sessions | user-1000(100) × sessions(100) | ≈40% |
+| **Coding** | herdr + claude sessions | user-1000(100) × sessions(100) | ≈40% |
 | **Batch** | ytptube, immich (all containers) | user-1001(150) × media-batch(10), CPUQuota=240% | ≈3% (hard cap: 3 threads) |
 
 **Interactive rule is absolute**: a service wins at full interactive priority ONLY
@@ -24,7 +24,7 @@ Background jobs are ranked by how much delay is acceptable to the user:
 | Service | Tier | Tolerance | Reason |
 |---|---|---|---|
 | jellyfin transcode | interactive | **0%** — any buffering breaks UX | live playback |
-| zellij + claude | coding | **~5%** — small lag is annoying but acceptable | LLM I/O waits hide it |
+| herdr + claude | coding | **~5%** — small lag is annoying but acceptable | LLM I/O waits hide it |
 | immich server (ffmpeg/thumbs) | batch | **70%** — import can take hours anyway | bulk async |
 | immich machine learning | batch | **85%** — face/CLIP runs when idle | fully background |
 | ytptube (yt-dlp + ffmpeg) | batch | **90%** — download finishes eventually | async queue |
@@ -76,7 +76,7 @@ at the **batch slice** + trust oomd. Protect only the management plane with
 - `modules/watchdog.nix` — hardware watchdog auto-reboot on hard hang
 - `services/media-slice.nix` — srv user: media-interactive.slice + media-batch.slice
   (CPU weight/quota **and** MemoryHigh + ManagedOOMMemoryPressure on batch)
-- `modules/home/claude-sessions.nix` — homeserver user: sessions.slice weight
+- `modules/home/herdr-sessions.nix` — homeserver user: sessions.slice weight
 - `services/jellyfin.nix` — interactive tier (media-interactive.slice)
 - `services/ytptube.nix`, `services/immich.nix` — batch tier (media-batch.slice)
 
@@ -103,5 +103,5 @@ sudo -u srv XDG_RUNTIME_DIR=/run/user/1001 systemctl --user set-property media-b
 ```
 
 Services (jellyfin, ytptube, immich) must restart to pick up new Slice= values —
-that happens automatically on `nixos-rebuild switch` and does NOT affect zellij
+that happens automatically on `nixos-rebuild switch` and does NOT affect herdr
 sessions (those unit files are unchanged; slice changes don't restart child units).

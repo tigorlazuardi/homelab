@@ -7,7 +7,7 @@
 #   2. coding       (sessions.slice under user-1000)          ≈ 40% of user.slice
 #   3. batch media  (media-batch.slice under user-1001)       ≈  3% of user.slice
 #
-# See services/media-slice.nix (srv user slices) and modules/home/claude-sessions.nix
+# See services/media-slice.nix (srv user slices) and modules/home/herdr-sessions.nix
 # (homeserver sessions.slice) for the per-user sub-slices.
 {
   # Global ceiling: 85% of 8 threads = 680%. All user services combined (homeserver +
@@ -19,7 +19,7 @@
   # beat coding sessions despite sitting in a different cgroup subtree.
   systemd.slices."user-1001".sliceConfig.CPUWeight = "150";
 
-  # homeserver (uid 1000): runs zellij+claude sessions. 40% of user.slice.
+  # homeserver (uid 1000): runs herdr+claude sessions. 40% of user.slice.
   # Beats batch media (ytptube, immich) because those sit in media-batch.slice
   # with CPUWeight=10 within srv's session — very low effective share.
   systemd.slices."user-1000".sliceConfig.CPUWeight = "100";

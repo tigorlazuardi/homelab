@@ -16,8 +16,8 @@
       pi
     ])
     ++ (with pkgs; [
-      # session / runtimes
-      zellij # keep session alive
+      # session / runtimes (session persistence itself is herdr — see
+      # modules/home/herdr-sessions.nix)
       nodejs
       pnpm
       bun

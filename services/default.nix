@@ -13,8 +13,6 @@
     ./observability.nix
     # below: cgroup v2 time-travel resource monitor + ttyd browser TUI
     ./below.nix
-    # zellij web: browser access to homeserver zellij sessions (tinyauth-gated)
-    ./zellij-web.nix
     # rootless app services
     # shared CPU budget (one slice) for media-processing services: immich + jellyfin
     ./media-slice.nix

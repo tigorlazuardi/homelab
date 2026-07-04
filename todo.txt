@@ -7,3 +7,4 @@ x 2026-06-19 2026-06-19 Cleanup stale Suwayomi trees AFTER restore verified (GAT
 
 (A) 2026-06-25 Verify Grafana alert rules loaded after nixos switch: UI Alerting > "Infra" folder shows 5 rules evaluating; check journalctl -t grafana for provisioning errors; then push commit e401789 +observability +homelab @server @verify
 (C) 2026-06-25 Beli UPS (BLOCKED: budget belum ada) line-interactive + pure-sine + USB/NUT, ~650-1000VA. Picks: APC SMC1000I (~Rp6,6jt, NUT usbhid paling matang) / Eaton EDX1000H (1000VA-700W, value) / CyberPower CP900EPFCLCD. Wajib tulisannya "pure sine wave" + USB port. Sesudah beli+colok USB: wire NUT NixOS (power.ups+upsd+upsmon, graceful shutdown + Telegram alert on-battery) = robustness Lapis #3 +hardware +homelab @purchase
+2026-07-04 Port claude-retry ke herdr socket API — integrasi zellij CLI putus setelah migrasi herdr +homelab @claude-retry

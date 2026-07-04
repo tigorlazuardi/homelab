@@ -18,6 +18,10 @@
     quadlet-nix.url = "github:SEIAROTg/quadlet-nix";
     # Agent/dev CLIs for the interactive homeserver user (claude-code, pi).
     llm-agents.url = "github:numtide/llm-agents.nix";
+    # Terminal workspace manager for the claude sessions (modules/home/herdr-sessions.nix).
+    # Pinned to a release tag — pre-1.0, update deliberately (read the changelog).
+    # No nixpkgs.follows: upstream builds against its own toolchain pins (rust+zig).
+    herdr.url = "github:ogulcancelik/herdr/v0.7.1";
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
