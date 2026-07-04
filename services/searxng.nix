@@ -84,6 +84,7 @@
       extraConfig = ''
         allow 192.168.100.0/24;  # LAN
         allow 10.0.0.0/24;       # wireguard VPN
+        allow 100.64.0.0/10;     # tailscale
         allow 127.0.0.1;
         deny all;
       '';
