@@ -69,6 +69,12 @@ let
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
 
+  # Agent names are unique SERVER-WIDE in herdr (a second `agent start claude`
+  # fails with agent_name_taken) — so each session's agent is named by its
+  # slugged workspace label, not "claude". Screen detection / the integration
+  # still identify the agent TYPE as claude; the name is just identity.
+  slug = name: lib.toLower (lib.replaceStrings [ " " ] [ "-" ] name);
+
   # Resume-or-start claude, looping so the pane survives claude exiting (parity
   # with the old zellij close_on_exit + systemd Restart=always semantics: exit →
   # fresh claude resuming the same conversation). Workspace label comes in as $1.
@@ -106,20 +112,20 @@ let
 
     existing=$(herdr workspace list 2>/dev/null | $jq -r '.result.workspaces[].label // empty' || true)
 
-    ensure() { # $1=label $2=cwd
+    ensure() { # $1=label $2=agent-name $3=cwd
       if printf '%s\n' "$existing" | grep -qxF "$1"; then
         echo "workspace '$1' present — skip"
         return 0
       fi
-      echo "creating workspace '$1' at $2"
-      resp=$(herdr workspace create --cwd "$2" --label "$1" --no-focus)
+      echo "creating workspace '$1' at $3"
+      resp=$(herdr workspace create --cwd "$3" --label "$1" --no-focus)
       ws=$(printf '%s' "$resp" | $jq -r '.result.workspace.workspace_id // empty')
       root=$(printf '%s' "$resp" | $jq -r '.result.root_pane.pane_id // empty')
       if [ -z "$ws" ]; then
         echo "failed to create workspace '$1': $resp" >&2
         return 1
       fi
-      herdr agent start claude --workspace "$ws" --cwd "$2" --no-focus \
+      herdr agent start "$2" --workspace "$ws" --cwd "$3" --no-focus \
         -- ${claude-hr}/bin/claude-hr "$1" || return 1
       [ -n "$root" ] && herdr pane close "$root"
       return 0
@@ -127,7 +133,7 @@ let
 
     rc=0
     ${lib.concatMapStrings (s: ''
-      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg "${home}/${s.dir}"} || rc=1
+      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} || rc=1
     '') enabledSessions}
     exit $rc
   '';
