@@ -52,6 +52,29 @@ home-manager.users.srv = { config, ... }:
   };
 ```
 
+## Gating a vhost to private networks (IP allow-list)
+
+Restricts a vhost to LAN + wireguard VPN + tailscale + loopback; denies all other
+sources. No auth gate — access is controlled purely at nginx.
+
+- **Helper service:** `private = true;` → injects `homelab.nginx.privateAllow`
+  (LAN + wireguard + tailscale + loopback, deny all). Additive with `auth`.
+- **Hand-written vhost:**
+  ```nix
+  locations."/" = {
+    proxyPass = "http://127.0.0.1:<port>";
+    extraConfig = config.homelab.nginx.privateAllow;
+  };
+  ```
+  File must be a function `{ config, ... }:` to access `config`.
+- **Trusted ranges live in ONE place:** `homelab.nginx.trustedRanges` in
+  `modules/quadlet-service.nix`. Add a new remote-access range there once and every
+  private vhost inherits it automatically.
+- **Tailscale gotcha:** a tailnet client reaching this host's vhost via the subnet
+  route arrives as INPUT (not forwarded → no SNAT), so nginx sees the raw
+  `100.64.0.0/10` source. That's why the CGNAT range must be in the allow-list.
+  Cross-ref: omniroute + searxng use this pattern.
+
 ## Gating a vhost behind auth (tinyauth forward-auth)
 
 `services/auth.nix` runs tinyauth → dex → pocket-id and declares a per-vhost

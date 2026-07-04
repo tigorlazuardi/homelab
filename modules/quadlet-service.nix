@@ -25,6 +25,23 @@ let
   domain = "tigor.web.id";
 in
 {
+  options.homelab.nginx = {
+    trustedRanges = mkOption {
+      type = types.listOf types.str;
+      default = [
+        "192.168.100.0/24" # LAN
+        "10.0.0.0/24" # wireguard VPN
+        "100.64.0.0/10" # tailscale (CGNAT)
+        "127.0.0.1" # loopback
+      ];
+      description = "Source ranges allowed to reach a private vhost. Add/change a remote-access range here once; every private vhost picks it up.";
+    };
+    privateAllow = mkOption {
+      type = types.lines;
+      description = "Rendered nginx allow/deny block for a private vhost (LAN + wireguard + tailscale + loopback, deny all). Reference from any hand-written private vhost's location extraConfig; the helper injects it via `private = true`.";
+    };
+  };
+
   options.homelab.containers = mkOption {
     default = { };
     description = "Rootless podman services (quadlet under srv) with nginx + hardening defaults.";
@@ -110,6 +127,11 @@ in
               type = types.lines;
               default = "";
             };
+            private = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Gate the vhost to private networks only (homelab.nginx.trustedRanges; deny all). Additive with `auth`.";
+            };
             auth = mkOption {
               type = types.bool;
               default = false;
@@ -136,6 +158,9 @@ in
   };
 
   config = {
+    homelab.nginx.privateAllow =
+      (lib.concatMapStrings (r: "allow ${r};\n") config.homelab.nginx.trustedRanges) + "deny all;\n";
+
     home-manager.users.srv =
       { config, ... }:
       let
@@ -197,7 +222,7 @@ in
         };
         locations."/" = {
           proxyPass = "http://127.0.0.1:${toString c.hostPort}";
-          extraConfig = c.nginx.extraConfig;
+          extraConfig = lib.optionalString c.private config.homelab.nginx.privateAllow + c.nginx.extraConfig;
         };
       }
     ) (filterAttrs (_: c: c.port != null) cfg);

@@ -39,14 +39,7 @@
       NEXT_PUBLIC_BASE_URL = "https://omniroute.tigor.web.id";
     };
     environmentFiles = [ config.sops.secrets."omniroute.env".path ];
-    # Private vhost: LAN + wireguard VPN only, no internet exposure, no auth gate.
-    nginx.extraConfig = ''
-      allow 192.168.100.0/24;  # LAN
-      allow 10.0.0.0/24;       # wireguard VPN
-      allow 100.64.0.0/10;     # tailscale
-      allow 127.0.0.1;
-      deny all;
-    '';
+    private = true; # LAN + wireguard + tailscale only (homelab.nginx.trustedRanges)
     tmpfiles = [ "d /var/mnt/state/omniroute 0750 srv srv -" ];
   };
 }

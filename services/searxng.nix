@@ -1,5 +1,6 @@
 # SearXNG — privacy metasearch. Two containers (core + valkey) on a private
 # rootless network so they resolve each other by name.
+{ config, ... }:
 {
   # core writes as uid 977 inside; valkey as 999 → keep-id maps each to host srv.
   home-manager.users.srv =
@@ -74,20 +75,16 @@
   ];
 
   # Private vhost: LAN + wireguard VPN only, no internet exposure. No tinyauth so
-  # the JSON API (?format=json) stays callable from allowed IPs. Container peers do
-  # NOT use this path — they join the `searxng` podman network and hit
-  # http://searxng:8080 directly (see .claude/rules/container-networking.md).
+  # the JSON API (?format=json) stays callable from allowed IPs. Ranges come from
+  # homelab.nginx.trustedRanges (modules/quadlet-service.nix) — edit there to
+  # update all private vhosts at once. Container peers do NOT use this path — they
+  # join the `searxng` podman network and hit http://searxng:8080 directly (see
+  # .claude/rules/container-networking.md).
   services.nginx.virtualHosts."searxng.tigor.web.id" = {
     forceSSL = true;
     locations."/" = {
       proxyPass = "http://127.0.0.1:8080";
-      extraConfig = ''
-        allow 192.168.100.0/24;  # LAN
-        allow 10.0.0.0/24;       # wireguard VPN
-        allow 100.64.0.0/10;     # tailscale
-        allow 127.0.0.1;
-        deny all;
-      '';
+      extraConfig = config.homelab.nginx.privateAllow;
     };
   };
 }
