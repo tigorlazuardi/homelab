@@ -4,6 +4,7 @@
     # host / native (privileged ports / kernel)
     ./adguardhome.nix
     ./wireguard.nix
+    ./tailscale.nix
     ./samba.nix
     ./smartd.nix
     # auth (forward-auth proxy + IdP; declares the per-vhost tinyauth option)
@@ -33,7 +34,7 @@
     ./ytptube.nix
     ./jdownloader.nix
     ./navidrome.nix
-    ./n9router.nix
+    ./omniroute.nix
     ./qbittorrent.nix
     ./immich.nix
     ./paperless-ngx.nix
