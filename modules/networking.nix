@@ -9,16 +9,20 @@
     # default route rode the DHCP src. A lease renewal/flap dropped outbound
     # connectivity while services bound to .5 lingered. See systemd.network below.
     useDHCP = false;
-    # AdGuard (.5) is primary so the host benefits from local ad-blocking and
-    # split-horizon names. 1.1.1.1 is a fallback ONLY for the host's own
-    # resolution: when AdGuard is down the box can still resolve outbound instead
-    # of going fully blind. LAN clients still point at AdGuard, so their filtering
-    # is unaffected.
-    nameservers = [
-      "192.168.100.5"
-      "1.1.1.1"
-    ];
+    # AdGuard (.5) is the host's ONLY resolver, so host- and container-originated
+    # lookups get local ad-blocking + split-horizon names and leave via AdGuard's
+    # DoH (never plain to a third party). 1.1.1.1/8.8.8.8 live in resolved's
+    # fallbackDns instead — a TRUE last-resort resolved uses ONLY when AdGuard is
+    # fully unreachable (e.g. before it starts at boot). Listing them in
+    # `nameservers` made resolved treat them as co-equal DNS= servers and stick to
+    # 1.1.1.1 after any failover, silently bypassing AdGuard.
+    nameservers = [ "192.168.100.5" ];
   };
+
+  services.resolved.settings.Resolve.FallbackDNS = [
+    "1.1.1.1"
+    "8.8.8.8"
+  ];
 
   # Static networking via systemd-networkd.
   systemd.network = {
