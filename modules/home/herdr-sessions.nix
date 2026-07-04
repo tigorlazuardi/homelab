@@ -56,7 +56,8 @@ let
   sessions = [
     { name = "Wallrus"; dir = "projects/wallrus"; }
     { name = "Commercelator"; dir = "projects/commercelator-template"; enable = false; }
-    { name = "Claude Retry Development"; dir = "projects/claude-retry"; }
+    # herdr port of claude-retry (the zellij-CLI original is retired; see todo.txt)
+    { name = "Herdr Claude Retry Development"; dir = "projects/herdr-claude-retry"; }
     { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; enable = false; }
     { name = "Booth9"; dir = "projects/booth9"; enable = false; }
     { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; enable = false; }
