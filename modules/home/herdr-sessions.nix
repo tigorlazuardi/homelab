@@ -61,11 +61,11 @@ let
     { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; enable = false; }
     { name = "Booth9"; dir = "projects/booth9"; enable = false; }
     { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; enable = false; }
-    { name = "Sittyba"; dir = "projects/sittyba"; }
+    { name = "Sittyba"; dir = "projects/sittyba"; enable = false; }
     # config management: the homelab infra repo.
     { name = "Config Management"; dir = "homelab"; }
-    { name = "Chezmoi"; dir = ".local/share/chezmoi"; }
-    { name = "Visual Planner"; dir = "projects/visual-planner"; }
+    { name = "Chezmoi"; dir = ".local/share/chezmoi"; enable = false; }
+    { name = "Plandeck Development"; dir = "projects/visual-planner"; }
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
