@@ -66,6 +66,8 @@ let
     { name = "Config Management"; dir = "homelab"; }
     { name = "Chezmoi"; dir = ".local/share/chezmoi"; enable = false; }
     { name = "Plandeck Development"; dir = "projects/visual-planner"; }
+    # Pi (not claude) harness; repo cloned via git ssh on first provision if absent.
+    { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
@@ -76,6 +78,11 @@ let
   # still identify the agent TYPE as claude; the name is just identity.
   slug = name: lib.toLower (lib.replaceStrings [ " " ] [ "-" ] name);
 
+  # Per-session coding harness → the pane's resume-or-start wrapper. Default
+  # claude; `harness = "pi"` selects the pi wrapper (Ring Road). pi-hr is defined
+  # below — fine, `let` bindings are recursive.
+  harnessBin = s: if (s.harness or "claude") == "pi" then "${pi-hr}/bin/pi-hr" else "${claude-hr}/bin/claude-hr";
+
   # Resume-or-start claude, looping so the pane survives claude exiting (parity
   # with the old zellij close_on_exit + systemd Restart=always semantics: exit →
   # fresh claude resuming the same conversation). Workspace label comes in as $1.
@@ -85,6 +92,20 @@ let
     while true; do
       claude --continue --remote-control "$name" || claude --remote-control "$name"
       echo "claude exited — restarting in 3s (ctrl-c to get a shell)" >&2
+      sleep 3 || exec ''${SHELL:-bash}
+    done
+  '';
+
+  # Pi coding-agent harness (Ring Road). pi has no --remote-control (claude-only);
+  # `pi --continue` resumes the latest session in the pane cwd. Same crash-restart
+  # loop as claude-hr so the pane survives pi exiting. herdr's native
+  # resume-on-restore is claude-specific — pi panes rely on this loop + pi's own
+  # session store instead.
+  pi-hr = pkgs.writeShellScriptBin "pi-hr" ''
+    export PATH="${userPath}:$PATH"
+    while true; do
+      pi --continue || pi
+      echo "pi exited — restarting in 3s (ctrl-c to get a shell)" >&2
       sleep 3 || exec ''${SHELL:-bash}
     done
   '';
@@ -113,10 +134,14 @@ let
 
     existing=$(herdr workspace list 2>/dev/null | $jq -r '.result.workspaces[].label // empty' || true)
 
-    ensure() { # $1=label $2=agent-name $3=cwd
+    ensure() { # $1=label $2=agent-name $3=cwd $4=harness-cmd $5=repo(optional)
       if printf '%s\n' "$existing" | grep -qxF "$1"; then
         echo "workspace '$1' present — skip"
         return 0
+      fi
+      if [ -n "$5" ] && [ ! -d "$3/.git" ]; then
+        echo "cloning $5 -> $3"
+        git clone "$5" "$3" || { echo "clone failed for '$1'" >&2; return 1; }
       fi
       echo "creating workspace '$1' at $3"
       resp=$(herdr workspace create --cwd "$3" --label "$1" --no-focus)
@@ -127,14 +152,14 @@ let
         return 1
       fi
       herdr agent start "$2" --workspace "$ws" --cwd "$3" --no-focus \
-        -- ${claude-hr}/bin/claude-hr "$1" || return 1
+        -- "$4" "$1" || return 1
       [ -n "$root" ] && herdr pane close "$root"
       return 0
     }
 
     rc=0
     ${lib.concatMapStrings (s: ''
-      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} || rc=1
+      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} ${lib.escapeShellArg (harnessBin s)} ${lib.escapeShellArg (s.repo or "")} || rc=1
     '') enabledSessions}
     exit $rc
   '';
@@ -143,6 +168,7 @@ in
   home.packages = [
     herdr
     claude-hr
+    pi-hr
   ];
 
   # Declarative base config. NB: home-manager symlinks this read-only — herdr's
