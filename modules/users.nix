@@ -93,6 +93,7 @@
       ./home/systemd-srv.nix
       ./home/tuxedo.nix
       ./home/herdr-sessions.nix
+      ./home/herdr-claude-retry.nix
       ./home/comma.nix
     ];
     home.username = "homeserver";
