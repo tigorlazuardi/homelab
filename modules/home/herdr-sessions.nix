@@ -68,6 +68,7 @@ let
     { name = "Plandeck Development"; dir = "projects/visual-planner"; }
     # Pi (not claude) harness; repo cloned via git ssh on first provision if absent.
     { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
+    { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
