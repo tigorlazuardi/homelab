@@ -33,7 +33,6 @@
     ./jdownloader.nix
     ./navidrome.nix
     ./omniroute.nix
-    ../modules/home/herdr-remote.nix
     ./qbittorrent.nix
     ./immich.nix
     ./paperless-ngx.nix
