@@ -65,7 +65,7 @@ let
     # config management: the homelab infra repo.
     { name = "Config Management"; dir = "homelab"; }
     { name = "Chezmoi"; dir = ".local/share/chezmoi"; enable = false; }
-    { name = "Plandeck Development"; dir = "projects/visual-planner"; }
+    { name = "Plandeck Development"; dir = "projects/visual-planner"; enable = false; }
     # Pi (not claude) harness; repo cloned via git ssh on first provision if absent.
     { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
     { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
