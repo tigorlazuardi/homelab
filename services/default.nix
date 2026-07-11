@@ -39,5 +39,6 @@
     ./infisical.nix
     ./webhook.nix
     ./wallrus.nix
+    ./pi-web.nix
   ];
 }

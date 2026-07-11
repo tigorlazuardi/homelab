@@ -95,6 +95,7 @@
       ./home/herdr-sessions.nix
       ./home/herdr-claude-retry.nix
       ./home/comma.nix
+      ./home/pi-web.nix
     ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
