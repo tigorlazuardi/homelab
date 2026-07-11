@@ -54,7 +54,7 @@ let
   # close it by hand to free RAM; flip back to re-provision). Disabled set chosen
   # during the RAM-pressure review.
   sessions = [
-    { name = "Wallrus"; dir = "projects/wallrus"; }
+    { name = "Wallrus"; dir = "projects/wallrus"; enable = false; }
     { name = "Commercelator"; dir = "projects/commercelator-template"; enable = false; }
     # herdr port of claude-retry (the zellij-CLI original is retired; see todo.txt)
     { name = "Herdr Claude Retry Development"; dir = "projects/herdr-claude-retry"; }
@@ -69,6 +69,8 @@ let
     # Pi (not claude) harness; repo cloned via git ssh on first provision if absent.
     { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
     { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
+    { name = "Herdr Web TUI"; dir = "projects/herdr-web-tui"; harness = "pi"; repo = "git@github.com:tigorlazuardi/herdr-web-tui.git"; }
+    { name = "Sekolah Sinar Kasih"; dir = "projects/sekolah-sinar-kasih"; harness = "pi"; } # local git init, no remote
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
