@@ -19,9 +19,10 @@
     # Agent/dev CLIs for the interactive homeserver user (claude-code, pi).
     llm-agents.url = "github:numtide/llm-agents.nix";
     # Terminal workspace manager for the claude sessions (modules/home/herdr-sessions.nix).
-    # Pinned to a release tag — pre-1.0, update deliberately (read the changelog).
-    # No nixpkgs.follows: upstream builds against its own toolchain pins (rust+zig).
-    herdr.url = "github:ogulcancelik/herdr/v0.7.1";
+    # Tracks the default branch (pre-1.0, moves fast — we want latest each `nix
+    # flake update`). No nixpkgs.follows: upstream builds against its own
+    # toolchain pins (rust+zig).
+    herdr.url = "github:ogulcancelik/herdr";
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
