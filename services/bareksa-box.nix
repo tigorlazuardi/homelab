@@ -49,7 +49,29 @@ in
         environment.systemPackages = with pkgs; [
           netbird
           openvpn
+          bat
+          eza
         ];
+
+        # Fish shell mirroring the host (modules/fish.nix), minus the host-only
+        # `srv` helper (no srv user in this box).
+        programs.fish = {
+          enable = true;
+          interactiveShellInit = ''
+            set fish_greeting # Disable greeting
+          '';
+          shellAliases = {
+            ls = "eza -la";
+            cat = "bat";
+          };
+        };
+        programs.zoxide = {
+          enable = true;
+          flags = [
+            "--cmd cd"
+            "--hook prompt"
+          ];
+        };
 
         # Nested rootless podman workloads, egress via whatever VPN owns the
         # box's default route. Nesting behavior (userns/cgroup delegation) is a
@@ -66,7 +88,7 @@ in
         users.users.homeserver = {
           isNormalUser = true;
           extraGroups = [ "wheel" ];
-          shell = pkgs.bash;
+          shell = pkgs.fish;
           openssh.authorizedKeys.keys = [
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPO1aSG3/1vrgEPgK038tZ8+ipz3gZqr9hRT0JUteJXY tigor@fort"
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/dGHD56+3qsLhUvmG4GeN8JrpYw7oGt0iQT+WkZzFu tigor@nexus"
