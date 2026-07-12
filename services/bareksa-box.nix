@@ -59,11 +59,31 @@ in
           (with pkgs; [
             netbird
             openvpn
-            bat
-            eza
             nodejs # claude-code runtime
+            # common dev tooling (mirrors modules/cli.nix + dev.nix)
             git
             gh
+            curl
+            wget
+            unzip
+            ripgrep
+            fd
+            fzf
+            jq
+            tree
+            gnumake
+            gcc
+            # modern CLI (bat/eza/zoxide already wired via programs below)
+            bat
+            eza
+            btop
+            duf
+            dust
+            delta
+            tldr
+            yazi
+            just
+            mise # runtime/tool version manager
           ])
           ++ [
             agents.claude-code
@@ -80,12 +100,28 @@ in
           defaultEditor = true;
         };
 
+        # Run unpatched dynamic binaries (mise-installed toolchains, downloaded
+        # binaries, LSPs) — mirrors modules/nix-ld.nix.
+        programs.nix-ld.enable = true;
+        services.envfs.enable = true;
+        programs.appimage = {
+          enable = true;
+          binfmt = true;
+        };
+
+        # direnv + nix-direnv — mirrors modules/direnv.nix.
+        programs.direnv = {
+          enable = true;
+          nix-direnv.enable = true;
+        };
+
         # Fish shell mirroring the host (modules/fish.nix), minus the host-only
         # `srv` helper (no srv user in this box).
         programs.fish = {
           enable = true;
           interactiveShellInit = ''
             set fish_greeting # Disable greeting
+            ${pkgs.mise}/bin/mise activate fish | source
           '';
           shellAliases = {
             ls = "eza -la";
