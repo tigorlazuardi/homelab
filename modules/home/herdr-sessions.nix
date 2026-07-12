@@ -180,6 +180,16 @@ in
     # Managed by nix (modules/home/herdr-sessions.nix) — edit there.
     onboarding = false
 
+    [session]
+    # Do NOT let herdr's native resume synthesize a bare `claude --resume <uuid>`
+    # on daemon restart — it drops the `--remote-control` flag (and the crash-loop
+    # wrapper), leaving restored claude panes without Remote Control. With this
+    # off, restore re-runs each pane's recorded launch_argv (claude-hr / pi-hr)
+    # instead, which already does `--continue --remote-control` (claude) / resume
+    # (pi). Panes need launch_argv recorded (i.e. started via the provisioner) for
+    # this to apply — pre-existing panes must be relaunched once via claude-hr.
+    resume_agents_on_restore = false
+
     [update]
     # Binary is nix-managed (flake input, pinned tag) — no self-update nagging.
     version_check = false
