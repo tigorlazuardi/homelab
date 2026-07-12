@@ -142,18 +142,23 @@ in
         # provisions host-specific project workspaces that don't exist here; run
         # sessions by hand via `herdr` instead. Needs linger (below) to run
         # without an active login.
-        systemd.user.slices.sessions.Slice.CPUWeight = "100";
+        # System-level systemd.user schema (lowercase description/wantedBy/
+        # serviceConfig) — NOT the home-manager Unit/Service/Install schema the
+        # host uses.
+        systemd.user.slices.sessions.sliceConfig.CPUWeight = "100";
         systemd.user.services.herdr-server = {
-          Unit.Description = "herdr server (terminal workspace daemon for coding sessions)";
-          Install.WantedBy = [ "default.target" ];
-          Service = {
+          description = "herdr server (terminal workspace daemon for coding sessions)";
+          wantedBy = [ "default.target" ];
+          environment = {
+            # Override the stock user-unit PATH so herdr can spawn claude/pi/node
+            # from the system profile. sw/bin already carries coreutils et al.
+            PATH = lib.mkForce herdrUserPath;
+            TERM = "xterm-256color";
+            COLORTERM = "truecolor";
+          };
+          serviceConfig = {
             Type = "simple";
             WorkingDirectory = "%h";
-            Environment = [
-              "PATH=${herdrUserPath}"
-              "TERM=xterm-256color"
-              "COLORTERM=truecolor"
-            ];
             ExecStart = "${herdr}/bin/herdr server";
             Slice = "sessions.slice";
             Restart = "always";
@@ -161,14 +166,12 @@ in
           };
         };
         systemd.user.services.herdr-claude-retry = {
-          Unit = {
-            Description = "Auto-resume rate-limited claude panes in herdr";
-            After = [ "herdr-server.service" ];
-            Requires = [ "herdr-server.service" ];
-            PartOf = [ "herdr-server.service" ];
-          };
-          Install.WantedBy = [ "default.target" ];
-          Service = {
+          description = "Auto-resume rate-limited claude panes in herdr";
+          after = [ "herdr-server.service" ];
+          requires = [ "herdr-server.service" ];
+          partOf = [ "herdr-server.service" ];
+          wantedBy = [ "default.target" ];
+          serviceConfig = {
             Type = "simple";
             ExecStart = "${pkgs.nodejs}/bin/node ${herdr-claude-retry}/lib/dist/cli.js start";
             WorkingDirectory = "%h";
