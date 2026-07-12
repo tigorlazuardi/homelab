@@ -71,6 +71,7 @@ in
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPO1aSG3/1vrgEPgK038tZ8+ipz3gZqr9hRT0JUteJXY tigor@fort"
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/dGHD56+3qsLhUvmG4GeN8JrpYw7oGt0iQT+WkZzFu tigor@nexus"
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGUdNT+Pr015Li6Jp9cb1vCghd2C8EnecYwSC98qQCxl tigor@envy"
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN9ZOi6U8vMBhXr7YcV76we8r8CgmPQ4JWd06fGNok23 tigorhutasuhut@Tigors-MacBook-Pro.local"
           ];
         };
 
