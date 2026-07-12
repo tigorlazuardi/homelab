@@ -71,6 +71,7 @@ let
     { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
     { name = "Herdr Web TUI"; dir = "projects/herdr-web-tui"; harness = "pi"; repo = "git@github.com:tigorlazuardi/herdr-web-tui.git"; }
     { name = "Sekolah Sinar Kasih"; dir = "projects/sekolah-sinar-kasih"; harness = "pi"; } # local git init, no remote
+    { name = "NixOS Switch Approval Telegram Portal"; dir = "projects/nixos-switch-approval-telegram-portal"; harness = "pi"; repo = "git@github.com:tigorlazuardi/nixos-switch-approval-telegram-portal.git"; }
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
