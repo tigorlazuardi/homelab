@@ -15,5 +15,7 @@
     biome
     unzip
     go
+    gopls
+    typescript-language-server
   ];
 }
