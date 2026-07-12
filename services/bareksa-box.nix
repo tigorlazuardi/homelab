@@ -11,7 +11,7 @@
 #   sudo nixos-container root-login bareksa-box   # or: sudo machinectl shell bareksa-box
 #   tailscale up                                  # interactive auth, joins tailnet
 #   # then SSH in over tailscale and configure netbird / openvpn manually.
-{ lib, ... }:
+{ lib, inputs, ... }:
 let
   # Same WAN interface wireguard.nix NATs through — reuse it so container
   # egress rides the existing iptables MASQUERADE path.
@@ -35,8 +35,16 @@ in
       "CAP_NET_RAW"
     ];
 
+    # Pass flake inputs into the guest eval so it can pull claude-code / pi
+    # (llm-agents) and herdr from the same pins the host uses.
+    specialArgs = { inherit inputs; };
+
     config =
       { pkgs, ... }:
+      let
+        agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
+        herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+      in
       {
         # Own tailnet node — this is the SSH ingress path (bootstrap: root-login
         # once from the host, `tailscale up` interactively, then SSH over tailnet).
@@ -44,14 +52,33 @@ in
 
         services.openssh.enable = true;
 
-        # Packages only — netbird/openvpn are left unconfigured; the user
-        # supplies credentials manually after first entry ("terlalu sensitif").
-        environment.systemPackages = with pkgs; [
-          netbird
-          openvpn
-          bat
-          eza
-        ];
+        # netbird/openvpn = packages only, unconfigured (user supplies creds
+        # manually). Coding env: claude-code + pi (llm-agents) + herdr binary,
+        # with node/git/gh runtimes. Neovim binary via programs.neovim below.
+        environment.systemPackages =
+          (with pkgs; [
+            netbird
+            openvpn
+            bat
+            eza
+            nodejs # claude-code runtime
+            git
+            gh
+          ])
+          ++ [
+            agents.claude-code
+            agents.pi
+            herdr
+          ];
+
+        # Neovim (no config — user manages it manually), mirroring the host's
+        # modules/neovim.nix defaults.
+        programs.neovim = {
+          enable = true;
+          viAlias = true;
+          vimAlias = true;
+          defaultEditor = true;
+        };
 
         # Fish shell mirroring the host (modules/fish.nix), minus the host-only
         # `srv` helper (no srv user in this box).
