@@ -44,6 +44,26 @@ in
       let
         agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
         herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
+        # PATH for the herdr daemon (its panes inherit it): claude/pi/node/git
+        # all land in the system profile via environment.systemPackages.
+        herdrUserPath = "/run/wrappers/bin:/run/current-system/sw/bin";
+
+        # herdr-claude-retry: auto-resumes rate-limited claude panes. Same npm
+        # tarball as the host (modules/home/herdr-claude-retry.nix) — prebuilt
+        # dist/, zero runtime deps, run with node. Bump: version + hash.
+        herdr-claude-retry = pkgs.stdenvNoCC.mkDerivation {
+          pname = "herdr-claude-retry";
+          version = "0.1.7";
+          src = pkgs.fetchurl {
+            url = "https://registry.npmjs.org/@tigorhutasuhut/herdr-claude-retry/-/herdr-claude-retry-0.1.7.tgz";
+            hash = "sha256-h4xv72wgGDkN3p+LRJQUQ9MFx0TbLik9Kgr6t656dGM=";
+          };
+          installPhase = ''
+            mkdir -p $out/lib
+            cp -r . $out/lib
+          '';
+        };
       in
       {
         # Own tailnet node — this is the SSH ingress path (bootstrap: root-login
@@ -115,6 +135,49 @@ in
           nix-direnv.enable = true;
         };
 
+        # herdr coding-session daemon + auto-retry, mirroring the host
+        # (modules/home/herdr-sessions.nix + herdr-claude-retry.nix). Declared as
+        # system-level systemd.user services (no home-manager in this guest).
+        # NOTE: the host's session PROVISIONER is intentionally NOT copied — it
+        # provisions host-specific project workspaces that don't exist here; run
+        # sessions by hand via `herdr` instead. Needs linger (below) to run
+        # without an active login.
+        systemd.user.slices.sessions.Slice.CPUWeight = "100";
+        systemd.user.services.herdr-server = {
+          Unit.Description = "herdr server (terminal workspace daemon for coding sessions)";
+          Install.WantedBy = [ "default.target" ];
+          Service = {
+            Type = "simple";
+            WorkingDirectory = "%h";
+            Environment = [
+              "PATH=${herdrUserPath}"
+              "TERM=xterm-256color"
+              "COLORTERM=truecolor"
+            ];
+            ExecStart = "${herdr}/bin/herdr server";
+            Slice = "sessions.slice";
+            Restart = "always";
+            RestartSec = 5;
+          };
+        };
+        systemd.user.services.herdr-claude-retry = {
+          Unit = {
+            Description = "Auto-resume rate-limited claude panes in herdr";
+            After = [ "herdr-server.service" ];
+            Requires = [ "herdr-server.service" ];
+            PartOf = [ "herdr-server.service" ];
+          };
+          Install.WantedBy = [ "default.target" ];
+          Service = {
+            Type = "simple";
+            ExecStart = "${pkgs.nodejs}/bin/node ${herdr-claude-retry}/lib/dist/cli.js start";
+            WorkingDirectory = "%h";
+            Slice = "sessions.slice";
+            Restart = "always";
+            RestartSec = 5;
+          };
+        };
+
         # Fish shell mirroring the host (modules/fish.nix), minus the host-only
         # `srv` helper (no srv user in this box).
         programs.fish = {
@@ -154,6 +217,8 @@ in
           isNormalUser = true;
           extraGroups = [ "wheel" ];
           shell = pkgs.fish;
+          # Run herdr-server + herdr-claude-retry without an active login.
+          linger = true;
           openssh.authorizedKeys.keys = [
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPO1aSG3/1vrgEPgK038tZ8+ipz3gZqr9hRT0JUteJXY tigor@fort"
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/dGHD56+3qsLhUvmG4GeN8JrpYw7oGt0iQT+WkZzFu tigor@nexus"
