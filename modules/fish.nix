@@ -9,6 +9,9 @@
     interactiveShellInit = ''
       set fish_greeting # Disable greeting
 
+      # fzf fish keybindings: ctrl-t (files), ctrl-r (history), alt-c (cd).
+      ${pkgs.fzf}/bin/fzf --fish | source
+
       # Run a command as the srv user (owns all rootless containers). Wraps the
       # `cd /tmp` gotcha (srv can't chdir into homeserver's 0700 home) + sets the
       # user-bus XDG_RUNTIME_DIR. Needs the NOPASSWD runAs=srv sudoers rule

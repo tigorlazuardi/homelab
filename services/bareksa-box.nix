@@ -122,6 +122,8 @@ in
           interactiveShellInit = ''
             set fish_greeting # Disable greeting
             ${pkgs.mise}/bin/mise activate fish | source
+            # fzf fish keybindings: ctrl-t (files), ctrl-r (history), alt-c (cd).
+            ${pkgs.fzf}/bin/fzf --fish | source
           '';
           shellAliases = {
             ls = "eza -la";
