@@ -83,9 +83,9 @@ in
           defaultNetwork.settings.dns_enabled = true;
         };
 
-        # SSH-ready login user mirroring the host operator (homeserver), same
-        # authorized key set as modules/users.nix.
-        users.users.homeserver = {
+        # SSH-ready login user `tigor` (the operator), same authorized key set as
+        # modules/users.nix.
+        users.users.tigor = {
           isNormalUser = true;
           extraGroups = [ "wheel" ];
           shell = pkgs.fish;
