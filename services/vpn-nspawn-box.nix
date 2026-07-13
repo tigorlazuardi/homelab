@@ -281,6 +281,9 @@ in
               "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGUdNT+Pr015Li6Jp9cb1vCghd2C8EnecYwSC98qQCxl tigor@envy"
               "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN9ZOi6U8vMBhXr7YcV76we8r8CgmPQ4JWd06fGNok23 tigorhutasuhut@Tigors-MacBook-Pro.local"
               "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKz9QiADKsexZdggCZpGuwBQp3yeZ4ulOVaTAQ5dx1tv tigor@windows"
+              # homeserver host itself — lets this machine SSH/scp into the boxes
+              # (e.g. copying config over from the homeserver user).
+              "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH7Dd6s2s6iUrY2QRFDas2mhkG3ajjE2yP5J33foeKlJ homeserver@homeserver"
             ];
           };
 
