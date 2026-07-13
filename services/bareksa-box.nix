@@ -72,12 +72,16 @@ in
 
         services.openssh.enable = true;
 
-        # tigor has no password (SSH-key-only login), so default
-        # wheelNeedsPassword would make `sudo` prompt for a password that
-        # doesn't exist → unusable. Access is already gated by SSH keys over the
-        # tailnet, so let wheel sudo without one. (Alternative: a sops
-        # hashedPasswordFile — not worth it for a single-operator, key-only box.)
-        security.sudo.wheelNeedsPassword = false;
+        # sudo REQUIRES a password — defense-in-depth even though the box is
+        # containerized and login is SSH-key-only. This repo is PUBLIC, so we do
+        # NOT ship a password hash here; instead mutableUsers stays true and
+        # tigor's password is set imperatively inside the box, once:
+        #   sudo machinectl shell root@bareksa-box   # then: passwd tigor
+        # (root-in-container needs no password, so this always works to recover.)
+        # A declarative sops hashedPasswordFile would need sops-nix wired into the
+        # nspawn guest — overkill for a single-operator box.
+        security.sudo.wheelNeedsPassword = true;
+        users.mutableUsers = true;
 
         # Keep tailscale WINNING over a full-tunnel office VPN. Once the user
         # brings up openvpn/netbird with redirect-gateway, they hijack the
@@ -410,6 +414,20 @@ in
         # Minimal — tailnet ingress (SSH) is the only expected inbound path.
         networking.firewall.enable = true;
         networking.firewall.allowedTCPPorts = [ 22 ];
+
+        # Office-internal hostnames, reachable over the office VPN (full-tunnel).
+        # Mirrors ~/dotfiles nixos/environments/bareksa/system/networking.nix.
+        # /etc/hosts wins over DNS, so gitlab.bareksa.com forces the internal IP
+        # even when the pushed VPN DNS would return a public Cloudflare address.
+        networking.extraHosts = ''
+          192.168.50.217 gitlab.bareksa.com
+          192.168.3.50 kafka.dev.bareksa.local
+          192.168.50.102 kafka-host-1 kafka-cluster-jkt-1
+          192.168.50.103 kafka-host-2 kafka-cluster-jkt-2
+          192.168.50.104 kafka-host-3 kafka-cluster-jkt-3
+          10.138.192.35 redis-stock.dev.bareksa.local
+          192.168.50.202 kafka-console.prod.bareksa.local
+        '';
 
         # Timezone + locale mirror the host (configuration.nix + modules/locale.nix):
         # en_US.UTF-8 base, id_ID.UTF-8 for the LC_* formatting categories, and
