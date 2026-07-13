@@ -640,15 +640,17 @@ in
   networking.firewall.trustedInterfaces = [ "ve-+" ];
 
   # cgroup containment: nspawn containers run as root-level
-  # `container@<name>.service`, OUTSIDE user.slice — pin it into its own
-  # slice so it doesn't compete unbounded against jellyfin/coding sessions.
-  # CPUWeight=100 matches the coding tier (sessions.slice) per cpu-priority.md;
-  # no hard MemoryMax (immich-style soft throttle only).
-  systemd.slices.${slice}.sliceConfig = {
+  # `container@<name>.service`, OUTSIDE user.slice — pin each into a child of the
+  # shared `boxes.slice` (CPUQuota=400% total, in modules/cpu-budget.nix) so the
+  # two office boxes together never exceed 4 threads and never starve
+  # jellyfin/coding/media. Child = `boxes-${slice}.slice` (systemd dashed-naming =
+  # parent/child); CPUWeight=100 splits the 400% between the boxes, MemoryHigh is
+  # per-box (immich-style soft throttle only, no hard MemoryMax).
+  systemd.slices."boxes-${slice}".sliceConfig = {
     CPUWeight = "100";
     MemoryHigh = "8G"; # TODO(tune): observe real VPN+podman peak via below/Grafana
   };
 
   # nixos-containers.nix already sets Slice = "machine.slice" — mkForce ours over it.
-  systemd.services."container@${name}".serviceConfig.Slice = lib.mkForce "${slice}.slice";
+  systemd.services."container@${name}".serviceConfig.Slice = lib.mkForce "boxes-${slice}.slice";
 }

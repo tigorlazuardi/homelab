@@ -45,6 +45,14 @@ sensitive; treat like interactive if tolerance < 20%.
 Never add a new per-service `CPUQuota` — the global user.slice ceiling already
 caps total usage. Only use `CPUWeight` within the slice to control relative priority.
 
+**Exception — nspawn office boxes are OUTSIDE user.slice.** `bareksa-box` +
+`strategix-box` run as root-level `container@<box>.service`, so the 680% user.slice
+ceiling does NOT cover them. They are contained under a shared parent `boxes.slice`
+with a hard `CPUQuota=400%` (4 of 8 threads) TOTAL for the pair; each box is a child
+`boxes-<name>.slice` splitting that 400% by `CPUWeight=100`. This is the one place a
+hard `CPUQuota` is correct — because the global ceiling structurally can't reach it.
+Parent quota lives in `modules/cpu-budget.nix`; child slices in `services/vpn-nspawn-box.nix`.
+
 ## Memory containment
 
 CPU weighting alone does NOT stop a memory spike: a batch job (immich ML + ffmpeg)
@@ -72,6 +80,9 @@ at the **batch slice** + trust oomd. Protect only the management plane with
 ## Implementation files
 
 - `modules/cpu-budget.nix` — system-level user.slice quota + user-N.slice weights
+  + the shared `boxes.slice` CPUQuota=400% parent for the nspawn office boxes
+- `services/vpn-nspawn-box.nix` — per-box `boxes-<name>.slice` child (weight-split
+  + MemoryHigh) for bareksa-box/strategix-box, assigned to `container@<box>.service`
 - `modules/memory-budget.nix` — swappiness + oomd backstop + sshd/networkd MemoryMin
 - `modules/watchdog.nix` — hardware watchdog auto-reboot on hard hang
 - `services/media-slice.nix` — srv user: media-interactive.slice + media-batch.slice

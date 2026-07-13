@@ -63,6 +63,10 @@
       CapabilityBoundingSet = [ "CAP_SYS_PTRACE" "CAP_DAC_READ_SEARCH" ];
       Restart = "on-failure";
       RestartSec = "5s";
+      # ttyd wraps `below live` in a pty; on stop the TUI child can ignore SIGTERM
+      # and hang, stalling shutdown/`nixos-rebuild switch` toward the 90s default.
+      # Cap hard at 3s — past that SIGKILL; a read-only monitor is safe to hard-kill.
+      TimeoutStopSec = "3s";
     };
   };
 }

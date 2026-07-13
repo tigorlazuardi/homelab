@@ -23,4 +23,13 @@
   # Beats batch media (ytptube, immich) because those sit in media-batch.slice
   # with CPUWeight=10 within srv's session — very low effective share.
   systemd.slices."user-1000".sliceConfig.CPUWeight = "100";
+
+  # VPN office boxes (bareksa-box + strategix-box) run as root-level
+  # `container@<box>.service`, OUTSIDE user.slice — so the 680% ceiling above does
+  # NOT cover them. Contain the pair under a shared parent `boxes.slice` capped at
+  # 400% (4 of 8 threads) TOTAL, so the two secondary office boxes together can
+  # never starve jellyfin/coding/media on the host. Each box is a child slice
+  # (`boxes-<name>.slice`, defined in services/vpn-nspawn-box.nix) that splits this
+  # 400% by CPUWeight; MemoryHigh stays per-box.
+  systemd.slices.boxes.sliceConfig.CPUQuota = "400%";
 }
