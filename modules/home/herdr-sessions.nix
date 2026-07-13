@@ -55,27 +55,98 @@ let
   # close it by hand to free RAM; flip back to re-provision). Disabled set chosen
   # during the RAM-pressure review.
   sessions = [
-    { name = "Wallrus"; dir = "projects/wallrus"; enable = false; }
-    { name = "Commercelator"; dir = "projects/commercelator-template"; enable = false; }
+    {
+      name = "Wallrus";
+      dir = "projects/wallrus";
+      enable = false;
+    }
+    {
+      name = "Commercelator";
+      dir = "projects/commercelator-template";
+      enable = false;
+    }
     # herdr port of claude-retry (the zellij-CLI original is retired; see todo.txt)
-    { name = "Herdr Claude Retry Development"; dir = "projects/herdr-claude-retry"; enable = false; }
-    { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; enable = false; }
-    { name = "Booth9"; dir = "projects/booth9"; enable = false; }
-    { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; enable = false; }
-    { name = "Sittyba"; dir = "projects/sittyba"; enable = false; }
+    {
+      name = "Herdr Claude Retry Development";
+      dir = "projects/herdr-claude-retry";
+      enable = false;
+    }
+    {
+      name = "Bun Cloudflare Template";
+      dir = "projects/bun-cloudflare-template";
+      enable = false;
+    }
+    {
+      name = "Booth9";
+      dir = "projects/booth9";
+      enable = false;
+    }
+    {
+      name = "Telemetry JS Development";
+      dir = "projects/telemetry-js";
+      enable = false;
+    }
+    {
+      name = "Sittyba";
+      dir = "projects/sittyba";
+      enable = false;
+    }
     # config management: the homelab infra repo.
-    { name = "Config Management"; dir = "homelab"; }
-    { name = "Chezmoi"; dir = ".local/share/chezmoi"; enable = false; }
-    { name = "Plandeck Development"; dir = "projects/visual-planner"; enable = false; }
+    {
+      name = "Config Management";
+      dir = "homelab";
+    }
+    {
+      name = "Chezmoi";
+      dir = ".local/share/chezmoi";
+      enable = false;
+    }
+    {
+      name = "Plandeck Development";
+      dir = "projects/visual-planner";
+      enable = false;
+    }
     # Pi (not claude) harness; repo cloned via git ssh on first provision if absent.
-    { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
-    { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
-    { name = "Herdr Web TUI"; dir = "projects/herdr-web-tui"; harness = "pi"; repo = "git@github.com:tigorlazuardi/herdr-web-tui.git"; }
-    { name = "Sekolah Sinar Kasih"; dir = "projects/sekolah-sinar-kasih"; harness = "pi"; enable = false; } # local git init, no remote
-    { name = "NixOS Switch Approval Telegram Portal"; dir = "projects/nixos-switch-approval-telegram-portal"; harness = "pi"; repo = "git@github.com:tigorlazuardi/nixos-switch-approval-telegram-portal.git"; }
+    {
+      name = "Ring Road";
+      dir = "projects/ring-road";
+      harness = "pi";
+      repo = "git@github.com:tigorlazuardi/ring-road.git";
+    }
+    {
+      name = "Herdr Sheepdog";
+      dir = "projects/herdr-sheepdog";
+      harness = "pi";
+    } # local git init, no remote
+    {
+      name = "Herdr Web TUI";
+      dir = "projects/herdr-web-tui";
+      harness = "pi";
+      repo = "git@github.com:tigorlazuardi/herdr-web-tui.git";
+    }
+    {
+      name = "Sekolah Sinar Kasih";
+      dir = "projects/sekolah-sinar-kasih";
+      harness = "pi";
+      enable = false;
+    } # local git init, no remote
+    {
+      name = "NixOS Switch Approval Telegram Portal";
+      dir = "projects/nixos-switch-approval-telegram-portal";
+      harness = "pi";
+      repo = "git@github.com:tigorlazuardi/nixos-switch-approval-telegram-portal.git";
+    }
     # pi's own config dir (~/.pi) — manage pi config with pi itself. Local, no remote.
-    { name = "Pi Configuration"; dir = ".pi"; harness = "pi"; }
-    { name = "Pi Sheepdog"; dir = "projects/pi-sheepdog"; harness = "pi"; } # local git init, no remote
+    {
+      name = "Pi Configuration";
+      dir = ".pi";
+      harness = "pi";
+    }
+    {
+      name = "Pi Sheepdog";
+      dir = "projects/pi-sheepdog";
+      harness = "pi";
+    } # local git init, no remote
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
@@ -89,7 +160,8 @@ let
   # Per-session coding harness → the pane's resume-or-start wrapper. Default
   # claude; `harness = "pi"` selects the pi wrapper (Ring Road). pi-hr is defined
   # below — fine, `let` bindings are recursive.
-  harnessBin = s: if (s.harness or "claude") == "pi" then "${pi-hr}/bin/pi-hr" else "${claude-hr}/bin/claude-hr";
+  harnessBin =
+    s: if (s.harness or "claude") == "pi" then "${pi-hr}/bin/pi-hr" else "${claude-hr}/bin/claude-hr";
 
   # Resume-or-start claude, looping so the pane survives claude exiting (parity
   # with the old zellij close_on_exit + systemd Restart=always semantics: exit →
@@ -167,7 +239,9 @@ let
 
     rc=0
     ${lib.concatMapStrings (s: ''
-      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} ${lib.escapeShellArg (harnessBin s)} ${lib.escapeShellArg (s.repo or "")} || rc=1
+      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} ${lib.escapeShellArg (harnessBin s)} ${
+        lib.escapeShellArg (s.repo or "")
+      } || rc=1
     '') enabledSessions}
     exit $rc
   '';
@@ -175,41 +249,23 @@ in
 {
   # herdr binary comes from nixpkgs via the home-manager module.
   programs.herdr.enable = true;
+  programs.herdr.settings = {
+    onboarding = false;
+    # This may cause bugs with claude not recognizing --remote-control, but auto remote control can be set with config.
+    session.resume_agents_on_restore = true;
+    # Binary is nix-managed (flake input, pinned tag) — no self-update nagging.
+    update.version_check = false;
+    # Headless host: no audio sink; sound is the attaching client's business.
+    ui.sound.enabled = false;
+    # Escape-sequence notifications to the outer terminal — works over SSH,
+    # the local terminal (ghostty/kitty/wezterm/iterm2) owns the popup.
+    ui.toast.delivery = "terminal";
+  };
 
   home.packages = [
     claude-hr
     pi-hr
   ];
-
-  # Declarative base config. NB: home-manager symlinks this read-only — herdr's
-  # settings UI / `herdr config reset-keys` can't write it; edit here instead.
-  xdg.configFile."herdr/config.toml".text = ''
-    # Managed by nix (modules/home/herdr-sessions.nix) — edit there.
-    onboarding = false
-
-    [session]
-    # Do NOT let herdr's native resume synthesize a bare `claude --resume <uuid>`
-    # on daemon restart — it drops the `--remote-control` flag (and the crash-loop
-    # wrapper), leaving restored claude panes without Remote Control. With this
-    # off, restore re-runs each pane's recorded launch_argv (claude-hr / pi-hr)
-    # instead, which already does `--continue --remote-control` (claude) / resume
-    # (pi). Panes need launch_argv recorded (i.e. started via the provisioner) for
-    # this to apply — pre-existing panes must be relaunched once via claude-hr.
-    resume_agents_on_restore = false
-
-    [update]
-    # Binary is nix-managed (flake input, pinned tag) — no self-update nagging.
-    version_check = false
-
-    [ui.sound]
-    # Headless host: no audio sink; sound is the attaching client's business.
-    enabled = false
-
-    [ui.toast]
-    # Escape-sequence notifications to the outer terminal — works over SSH,
-    # the local terminal (ghostty/kitty/wezterm/iterm2) owns the popup.
-    delivery = "terminal"
-  '';
 
   # CPU priority for ALL interactive claude sessions. Global ceiling is user.slice
   # CPUQuota=680% (see modules/cpu-budget.nix); CPUWeight governs share within
