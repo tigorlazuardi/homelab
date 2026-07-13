@@ -15,7 +15,7 @@ vim.opt.tabstop = 4
 
 vim.opt.clipboard = "unnamedplus"
 
-if vim.env.SSH_CLIENT then
+if vim.env.SSH_CLIENT or vim.env.HERDR_ENV then
   local function my_paste(reg)
     return function(lines)
       --[ 返回 “” 寄存器的内容，用来作为 p 操作符的粘贴物 ]
