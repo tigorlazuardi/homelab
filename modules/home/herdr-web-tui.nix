@@ -3,21 +3,19 @@
 # Runs as a systemd --user service (homeserver), bound to 127.0.0.1:8505, behind
 # the private nginx vhost in services/herdr-web-tui.nix.
 #
-# Uses the upstream flake's home-manager module but DISCARDS its herdr-package
-# resolution (pkgs.herdr / programs.herdr) — herdrPackage is pinned to our flake
-# input, the same herdr binary herdr-sessions.nix runs the daemon from, so the
-# CLI this shells out to matches the daemon. server.enable stays OFF: herdr-server
-# is already owned by herdr-sessions.nix; this just attaches to it.
-{ pkgs, inputs, ... }:
-let
-  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
-in
+# Uses the upstream flake's home-manager module. The herdr binary it shells out
+# to is resolved from home-manager's programs.herdr (pkgs.herdr), which
+# herdr-sessions.nix enables — the same binary that module runs the daemon from,
+# so CLI and daemon match. server.enable stays OFF: herdr-server is already owned
+# by herdr-sessions.nix; this just attaches to it.
+{ inputs, ... }:
 {
   imports = [ inputs.herdr-web-tui.homeManagerModules.default ];
 
   services.herdr-web-tui = {
     enable = true;
-    herdrPackage = herdr; # discard the module's pkgs.herdr fallback
+    # herdrPackage left unset → the module falls back to config.programs.herdr.package
+    # (pkgs.herdr), enabled via programs.herdr.enable in herdr-sessions.nix.
     server.enable = false; # herdr-server owned by herdr-sessions.nix
     addr = "127.0.0.1:8505"; # loopback only; nginx is the sole ingress
     logFormat = "json"; # journald -> Alloy -> Loki (structured)

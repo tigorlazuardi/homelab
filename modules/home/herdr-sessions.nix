@@ -31,13 +31,14 @@
   config,
   lib,
   osConfig,
-  inputs,
   ...
 }:
 let
   home = config.home.homeDirectory;
 
-  herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # herdr binary from nixpkgs via the home-manager programs.herdr module
+  # (enabled below). Was the `herdr` flake input; now nixpkgs-managed.
+  herdr = config.programs.herdr.package;
 
   # Grafana MCP token (see modules/users.nix). With the single-daemon model every
   # pane inherits the server env, so the token is loaded server-wide instead of
@@ -57,7 +58,7 @@ let
     { name = "Wallrus"; dir = "projects/wallrus"; enable = false; }
     { name = "Commercelator"; dir = "projects/commercelator-template"; enable = false; }
     # herdr port of claude-retry (the zellij-CLI original is retired; see todo.txt)
-    { name = "Herdr Claude Retry Development"; dir = "projects/herdr-claude-retry"; }
+    { name = "Herdr Claude Retry Development"; dir = "projects/herdr-claude-retry"; enable = false; }
     { name = "Bun Cloudflare Template"; dir = "projects/bun-cloudflare-template"; enable = false; }
     { name = "Booth9"; dir = "projects/booth9"; enable = false; }
     { name = "Telemetry JS Development"; dir = "projects/telemetry-js"; enable = false; }
@@ -70,8 +71,11 @@ let
     { name = "Ring Road"; dir = "projects/ring-road"; harness = "pi"; repo = "git@github.com:tigorlazuardi/ring-road.git"; }
     { name = "Herdr Sheepdog"; dir = "projects/herdr-sheepdog"; harness = "pi"; } # local git init, no remote
     { name = "Herdr Web TUI"; dir = "projects/herdr-web-tui"; harness = "pi"; repo = "git@github.com:tigorlazuardi/herdr-web-tui.git"; }
-    { name = "Sekolah Sinar Kasih"; dir = "projects/sekolah-sinar-kasih"; harness = "pi"; } # local git init, no remote
+    { name = "Sekolah Sinar Kasih"; dir = "projects/sekolah-sinar-kasih"; harness = "pi"; enable = false; } # local git init, no remote
     { name = "NixOS Switch Approval Telegram Portal"; dir = "projects/nixos-switch-approval-telegram-portal"; harness = "pi"; repo = "git@github.com:tigorlazuardi/nixos-switch-approval-telegram-portal.git"; }
+    # pi's own config dir (~/.pi) — manage pi config with pi itself. Local, no remote.
+    { name = "Pi Configuration"; dir = ".pi"; harness = "pi"; }
+    { name = "Pi Sheepdog"; dir = "projects/pi-sheepdog"; harness = "pi"; } # local git init, no remote
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
@@ -169,8 +173,10 @@ let
   '';
 in
 {
+  # herdr binary comes from nixpkgs via the home-manager module.
+  programs.herdr.enable = true;
+
   home.packages = [
-    herdr
     claude-hr
     pi-hr
   ];

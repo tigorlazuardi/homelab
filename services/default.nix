@@ -40,6 +40,7 @@
     ./webhook.nix
     ./wallrus.nix
     ./pi-web.nix
+    ./herdr-web-tui.nix
     ./bareksa-box.nix
   ];
 }

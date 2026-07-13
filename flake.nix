@@ -18,11 +18,11 @@
     quadlet-nix.url = "github:SEIAROTg/quadlet-nix";
     # Agent/dev CLIs for the interactive homeserver user (claude-code, pi).
     llm-agents.url = "github:numtide/llm-agents.nix";
-    # Terminal workspace manager for the claude sessions (modules/home/herdr-sessions.nix).
-    # Tracks the default branch (pre-1.0, moves fast — we want latest each `nix
-    # flake update`). No nixpkgs.follows: upstream builds against its own
-    # toolchain pins (rust+zig).
-    herdr.url = "github:ogulcancelik/herdr";
+    # Browser frontend for the herdr server (herdr.tigor.web.id). Standalone Go
+    # binary with the frontend embedded; consumes OUR herdr binary via its HM
+    # module (herdrPackage pinned to inputs.herdr, not the module's pkgs.herdr
+    # fallback). Own nixpkgs pin like herdr — self-contained build, no follows.
+    herdr-web-tui.url = "github:tigorlazuardi/herdr-web-tui";
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
       inputs.nixpkgs.follows = "nixpkgs";
