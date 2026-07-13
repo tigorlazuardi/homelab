@@ -43,7 +43,7 @@ in
       { pkgs, ... }:
       let
         agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
-        herdr = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
+        herdr = pkgs.herdr; # nixpkgs (was the herdr flake input)
 
         # PATH for the herdr daemon (its panes inherit it): claude/pi/node/git
         # all land in the system profile via environment.systemPackages.
@@ -71,6 +71,93 @@ in
         services.tailscale.enable = true;
 
         services.openssh.enable = true;
+
+        # tigor has no password (SSH-key-only login), so default
+        # wheelNeedsPassword would make `sudo` prompt for a password that
+        # doesn't exist → unusable. Access is already gated by SSH keys over the
+        # tailnet, so let wheel sudo without one. (Alternative: a sops
+        # hashedPasswordFile — not worth it for a single-operator, key-only box.)
+        security.sudo.wheelNeedsPassword = false;
+
+        # Keep tailscale WINNING over a full-tunnel office VPN. Once the user
+        # brings up openvpn/netbird with redirect-gateway, they hijack the
+        # MAIN-table default route. Tailscale marks its OWN uplink packets
+        # (control + DERP relays + encrypted peer traffic) with fwmark 0x80000
+        # and, by its own rule `5230: from all fwmark 0x80000 lookup main`,
+        # those then follow the hijacked default straight into the office tunnel
+        # — tailscale loses its control/DERP path, the tailnet drops, and SSH
+        # over tailscale (this box's ONLY ingress) dies with it.
+        #
+        # Fix (policy routing): a private table (52814) whose default is the
+        # box's REAL uplink — the current non-tunnel default (auto-detected gw +
+        # dev, i.e. the nspawn host gateway), which openvpn never touches — plus
+        # an ip rule at priority 5200 (ABOVE
+        # tailscale's own 5230) sending tailscale-marked packets there. So
+        # tailscale's uplink always egresses the clean path no matter what
+        # openvpn does to `main`; every OTHER (unmarked) app on the box still
+        # rides the full tunnel as intended. Inbound SSH (dest 100.64.0.0/10)
+        # already rides tailscale's own table-52 rule and is unaffected.
+        #
+        # PartOf tailscaled → re-applied whenever tailscale restarts (which
+        # reinstalls its 52xx rules); our 5200 rule sits outside tailscale's
+        # managed 5210-5270 range so tailscaled leaves it alone.
+        systemd.services.tailscale-uplink-guard = {
+          description = "Pin tailscale uplink outside a full-tunnel VPN (policy routing)";
+          after = [
+            "tailscaled.service"
+            "network.target"
+          ];
+          partOf = [ "tailscaled.service" ];
+          wantedBy = [
+            "multi-user.target"
+            "tailscaled.service"
+          ];
+          path = [
+            pkgs.iproute2
+            pkgs.coreutils
+            pkgs.gnused
+            pkgs.gnugrep
+          ];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script = ''
+            set -u
+            tbl=52814
+            # Clean uplink = the current NON-tunnel default route. AUTO-DETECTED
+            # (gw + dev) so we never hardcode the guest iface name — hardcoding
+            # `host0` was wrong and left the guard skipping = zero protection =
+            # SSH dropped when openvpn came up. Retry briefly for the boot race
+            # where the default route isn't installed yet.
+            def=""
+            for _ in $(seq 1 10); do
+              def=$(ip route show default 2>/dev/null | grep -vE 'dev (tun|tap)[0-9]*' | head -1)
+              [ -n "$def" ] && break
+              sleep 1
+            done
+            if [ -z "$def" ]; then
+              echo "tailscale-uplink-guard: no non-tunnel default route, skipping" >&2
+              exit 0
+            fi
+            gw=$(printf '%s\n' "$def" | sed -n 's/.* via \([0-9.]*\).*/\1/p')
+            dev=$(printf '%s\n' "$def" | sed -n 's/.* dev \([^ ]*\).*/\1/p')
+            if [ -z "$gw" ] || [ -z "$dev" ]; then
+              echo "tailscale-uplink-guard: cannot parse default route ($def), skipping" >&2
+              exit 0
+            fi
+            # Clean uplink table — independent of whatever openvpn does to main.
+            ip route replace default via "$gw" dev "$dev" table "$tbl"
+            # Route tailscale-marked (0x80000) traffic through it, above
+            # tailscale's own `lookup main` rule (5230). Idempotent.
+            ip rule del priority 5200 2>/dev/null || true
+            ip rule add priority 5200 fwmark 0x80000/0xff0000 table "$tbl"
+            echo "tailscale-uplink-guard: fwmark 0x80000 -> table $tbl (default via $gw dev $dev)" >&2
+          '';
+          preStop = ''
+            ${pkgs.iproute2}/bin/ip rule del priority 5200 2>/dev/null || true
+          '';
+        };
 
         # netbird/openvpn = packages only, unconfigured (user supplies creds
         # manually). Coding env: claude-code + pi (llm-agents) + herdr binary,
@@ -110,6 +197,29 @@ in
             agents.pi
             herdr
           ];
+
+        # Office OpenVPN (full-tunnel). The config file + inline credentials live
+        # ON the box at /etc/openvpn/office.ovpn — NOT in this public repo. This
+        # only wires the systemd unit + DNS handling.
+        #
+        # Root cause of "connected but no name resolution": a manual
+        # `openvpn --config ...` never applied the server-PUSHED DNS, so once
+        # redirect-gateway took the default route, the box had no working
+        # resolver under the tunnel. `updateResolvConf = true` plugs openvpn's
+        # pushed DNS into the box's resolvconf (openresolv — the same stack
+        # tailscale MagicDNS already writes), so both coexist. It also injects
+        # the --up/--down script + script-security automatically; the .ovpn must
+        # therefore NOT carry its own --up/--down lines.
+        #
+        # autoStart = false: bring it up on demand with
+        #   sudo systemctl start openvpn-office
+        # Full-tunnel is intentional here; tailscale-uplink-guard (above) keeps
+        # the tailnet + SSH ingress alive despite the hijacked default route.
+        services.openvpn.servers.office = {
+          config = "config /etc/openvpn/office.ovpn";
+          updateResolvConf = true;
+          autoStart = false;
+        };
 
         # Neovim (no config — user manages it manually), mirroring the host's
         # modules/neovim.nix defaults.
