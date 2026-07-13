@@ -35,6 +35,25 @@ in
       "CAP_NET_RAW"
     ];
 
+    # /dev/fuse for envfs. services.envfs (enabled in the guest) provides
+    # /usr/bin/env — the FHS shebang path npm/npx tools need (`#!/usr/bin/env
+    # node`) — via a FUSE mount at /usr/bin. nspawn's minimal /dev has no
+    # /dev/fuse, so that mount fails silently (fstab `nofail`) and /usr/bin/env
+    # never appears (symptom: `/usr/bin/env: bad interpreter: No such file or
+    # directory`). enableTun only wires /dev/net/tun; there is no enableFuse, so
+    # bind the device in AND allow it on the container scope. nspawn keeps
+    # CAP_SYS_ADMIN by default, so the guest can perform the fuse mount itself.
+    allowedDevices = [
+      {
+        node = "/dev/fuse";
+        modifier = "rwm";
+      }
+    ];
+    bindMounts."/dev/fuse" = {
+      hostPath = "/dev/fuse";
+      isReadOnly = false;
+    };
+
     # Pass flake inputs into the guest eval so it can pull claude-code / pi
     # (llm-agents) and herdr from the same pins the host uses.
     specialArgs = { inherit inputs; };
