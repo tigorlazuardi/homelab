@@ -170,6 +170,7 @@ in
             # common dev tooling (mirrors modules/cli.nix + dev.nix)
             git
             gh
+            glab # GitLab CLI (office repos are on GitLab)
             curl
             wget
             unzip
@@ -191,6 +192,7 @@ in
             yazi
             just
             mise # runtime/tool version manager
+            oscclip # osc52-copy/osc52-paste — clipboard over terminal escape (SSH/herdr-safe)
           ])
           ++ [
             agents.claude-code
@@ -211,14 +213,79 @@ in
         # the --up/--down script + script-security automatically; the .ovpn must
         # therefore NOT carry its own --up/--down lines.
         #
-        # autoStart = false: bring it up on demand with
-        #   sudo systemctl start openvpn-office
-        # Full-tunnel is intentional here; tailscale-uplink-guard (above) keeps
-        # the tailnet + SSH ingress alive despite the hijacked default route.
+        # autoStart = FALSE deliberately — do NOT put openvpn in the boot
+        # transaction. The NixOS module runs openvpn as `Type=notify`, which only
+        # signals systemd "started" after the tunnel fully connects
+        # (`Initialization Sequence Completed`). As a boot-time (multi-user.target)
+        # unit that meant: guest boot blocks on openvpn's start job → the nspawn
+        # container never signals "Ready" → the host `container@bareksa-box`
+        # hits its start timeout and RESTART-LOOPS the whole container (observed:
+        # NRestarts climbing, container stuck `activating`). openvpn is famously
+        # bad at this. Instead we start it POST-boot via a timer (below).
         services.openvpn.servers.office = {
           config = "config /etc/openvpn/office.ovpn";
           updateResolvConf = true;
           autoStart = false;
+        };
+
+        # Bound + reorder the office VPN unit (the module names it openvpn-office).
+        systemd.services."openvpn-office" = {
+          after = [
+            "tailscaled.service"
+            "tailscale-uplink-guard.service"
+          ];
+          wants = [
+            "tailscaled.service"
+            "tailscale-uplink-guard.service"
+          ];
+          serviceConfig = {
+            # Type=exec, NOT the module's notify: "started" = process is running,
+            # not "tunnel is up". openvpn retries the connection itself
+            # (resolv-retry infinite) — we never want systemd to sit in
+            # `activating` waiting for a tunnel, nor Restart-loop when the office
+            # server is briefly unreachable.
+            Type = lib.mkForce "exec";
+            # Even started post-boot by the timer, gate on tailscale actually
+            # being Running before openvpn's redirect-gateway touches the route
+            # table. At boot tailscale reconnects asynchronously and only marks
+            # its packets (fwmark 0x80000) once its netfilter is fully up; if
+            # openvpn hijacks the default first, the in-flight tailscale handshake
+            # isn't marked yet → hits `main` → into the office tunnel → blocked →
+            # tailscale never comes up, never marks → deadlock (SSH ingress dead).
+            # Because openvpn is out of the boot transaction, this wait no longer
+            # gates the container's Ready signal. Capped so it never hangs forever.
+            ExecStartPre = pkgs.writeShellScript "wait-tailscale-running" ''
+              for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
+                state=$(${pkgs.tailscale}/bin/tailscale status --json 2>/dev/null \
+                  | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null)
+                [ "$state" = "Running" ] && exit 0
+                ${pkgs.coreutils}/bin/sleep 1
+              done
+              echo "wait-tailscale-running: not Running after 60s, starting openvpn anyway" >&2
+              exit 0
+            '';
+            # Bound shutdown: openvpn's SIGTERM stop (down-script + explicit-exit-
+            # notify to the server) can hang toward systemd's 90s default, and the
+            # nspawn container's poweroff waits on it — which in turn blocks a host
+            # `nixos-rebuild switch`. A normal stop finishes well under a second
+            # (local resolvconf down-script + one UDP notify), so cap hard at 3s;
+            # past that SIGKILL — the tunnel is stateless, a hard kill is safe.
+            TimeoutStopSec = "3s";
+          };
+        };
+
+        # Autostart openvpn POST-boot via a timer, NOT via multi-user.target.
+        # timers.target arms instantly (the timer unit doesn't wait on openvpn),
+        # so the guest reaches Ready without ever blocking on the tunnel; the
+        # timer then fires ~20s later and starts openvpn-office — by which point
+        # boot is done and tailscale is (or is about to be) Running.
+        systemd.timers."openvpn-office-autostart" = {
+          wantedBy = [ "timers.target" ];
+          timerConfig = {
+            OnBootSec = "20s";
+            AccuracySec = "1s";
+            Unit = "openvpn-office.service";
+          };
         };
 
         # Neovim (no config — user manages it manually), mirroring the host's
@@ -343,6 +410,25 @@ in
         # Minimal — tailnet ingress (SSH) is the only expected inbound path.
         networking.firewall.enable = true;
         networking.firewall.allowedTCPPorts = [ 22 ];
+
+        # Timezone + locale mirror the host (configuration.nix + modules/locale.nix):
+        # en_US.UTF-8 base, id_ID.UTF-8 for the LC_* formatting categories, and
+        # enableAllTerminfo so SSH from ghostty/kitty/wezterm doesn't hit
+        # "unknown terminal type" in pagers.
+        time.timeZone = "Asia/Jakarta";
+        environment.enableAllTerminfo = true;
+        i18n.defaultLocale = "en_US.UTF-8";
+        i18n.extraLocaleSettings = {
+          LC_ADDRESS = "id_ID.UTF-8";
+          LC_IDENTIFICATION = "id_ID.UTF-8";
+          LC_MEASUREMENT = "id_ID.UTF-8";
+          LC_MONETARY = "id_ID.UTF-8";
+          LC_NAME = "id_ID.UTF-8";
+          LC_NUMERIC = "id_ID.UTF-8";
+          LC_PAPER = "id_ID.UTF-8";
+          LC_TELEPHONE = "id_ID.UTF-8";
+          LC_TIME = "id_ID.UTF-8";
+        };
 
         system.stateVersion = "25.11";
       };
