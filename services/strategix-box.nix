@@ -1,16 +1,19 @@
-# bareksa-box — systemd-nspawn NixOS container for the office VPN (netbird +
-# OpenVPN), reachable over its own Tailscale node, with rootless podman nested
-# inside. See plans/bareksa-box/SPEC.mdx for the full design + decisions.
+# strategix-box — systemd-nspawn NixOS container for the Strategix office VPN
+# (Netbird full-tunnel), reachable over its own Tailscale node, with rootless
+# podman nested inside. Structural twin of services/bareksa-box.nix; the ONE
+# real difference is the office VPN: Netbird here instead of OpenVPN there. See
+# plans/bareksa-box/SPEC.mdx for the shared design + decisions.
 #
-# Pivoted from Incus: virtualisation.incus asserts networking.nftables.enable
-# whenever the firewall is on, and this host's wireguard.nix uses raw iptables.
-# systemd-nspawn (native NixOS `containers.*`) has no such requirement and keeps
-# the host on iptables untouched.
+# Same Incus→nspawn rationale as bareksa-box: virtualisation.incus asserts
+# networking.nftables.enable whenever the firewall is on, and this host's
+# wireguard.nix uses raw iptables. systemd-nspawn (native NixOS `containers.*`)
+# has no such requirement and keeps the host on iptables untouched.
 #
 # VPN credentials are NOT configured here (out of scope, user-manual):
-#   sudo nixos-container root-login bareksa-box   # or: sudo machinectl shell bareksa-box
-#   tailscale up                                  # interactive auth, joins tailnet
-#   # then SSH in over tailscale and configure netbird / openvpn manually.
+#   sudo nixos-container root-login strategix-box   # or: sudo machinectl shell strategix-box
+#   tailscale up                                    # interactive auth, joins tailnet
+#   netbird up --setup-key <KEY> [--management-url <URL>]   # joins Strategix netbird net
+#   # (netbird stores its config; on reboot the daemon auto-reconnects.)
 { lib, inputs, ... }:
 let
   # Same WAN interface wireguard.nix NATs through — reuse it so container
@@ -18,15 +21,16 @@ let
   externalInterface = "eth0";
 in
 {
-  containers.bareksa-box = {
+  containers.strategix-box = {
     autoStart = true;
 
-    # Fresh /24, avoids wireguard's 10.0.0.0/24 and the tailnet's 100.64.0.0/10.
+    # Fresh /24, distinct from bareksa-box's 10.100.0.0/24, wireguard's
+    # 10.0.0.0/24 and the tailnet's 100.64.0.0/10.
     privateNetwork = true;
-    hostAddress = "10.100.0.1";
-    localAddress = "10.100.0.2";
+    hostAddress = "10.101.0.1";
+    localAddress = "10.101.0.2";
 
-    # /dev/net/tun for netbird/openvpn to create tunnel interfaces.
+    # /dev/net/tun for netbird/tailscale to create tunnel interfaces.
     enableTun = true;
 
     # VPN route setup inside the container's own netns.
@@ -40,7 +44,7 @@ in
     specialArgs = { inherit inputs; };
 
     config =
-      { pkgs, ... }:
+      { config, pkgs, ... }:
       let
         agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
         herdr = pkgs.herdr; # nixpkgs (was the herdr flake input)
@@ -76,37 +80,43 @@ in
         # containerized and login is SSH-key-only. This repo is PUBLIC, so we do
         # NOT ship a password hash here; instead mutableUsers stays true and
         # tigor's password is set imperatively inside the box, once:
-        #   sudo machinectl shell root@bareksa-box   # then: passwd tigor
+        #   sudo machinectl shell root@strategix-box   # then: passwd tigor
         # (root-in-container needs no password, so this always works to recover.)
-        # A declarative sops hashedPasswordFile would need sops-nix wired into the
-        # nspawn guest — overkill for a single-operator box.
         security.sudo.wheelNeedsPassword = true;
         users.mutableUsers = true;
 
-        # Keep tailscale WINNING over a full-tunnel office VPN. Once the user
-        # brings up openvpn/netbird with redirect-gateway, they hijack the
-        # MAIN-table default route. Tailscale marks its OWN uplink packets
-        # (control + DERP relays + encrypted peer traffic) with fwmark 0x80000
-        # and, by its own rule `5230: from all fwmark 0x80000 lookup main`,
-        # those then follow the hijacked default straight into the office tunnel
-        # — tailscale loses its control/DERP path, the tailnet drops, and SSH
-        # over tailscale (this box's ONLY ingress) dies with it.
+        # ── Keep tailscale WINNING over Netbird's full-tunnel ──────────────────
+        # Netbird (advanced routing, the default on modern kernels) does NOT just
+        # rewrite main's default like openvpn — it installs POLICY-ROUTING rules:
+        #   prio 105:  from all lookup main suppress_prefixlength 0   (hide main default)
+        #   prio 110:  not from all fwmark 0x1BD00 lookup 7120        (catch-all → netbird)
+        # and puts the 0.0.0.0/0 exit-node default in its own table 7120 (dev wt0).
+        # Rule 110 excludes ONLY netbird's own control mark (0x1BD00). Tailscale's
+        # underlay is marked 0x80000 (≠ 0x1BD00) and tailnet-destined traffic is
+        # unmarked — BOTH match netbird's catch-all at prio 110, which sits BELOW
+        # (higher precedence than) tailscale's own rules (5210-5270). So without a
+        # guard, netbird steals:
+        #   (a) tailscale's control/DERP/encrypted-peer underlay → tailnet drops,
+        #   (b) traffic TO the tailnet (100.64.0.0/10), incl. SSH reply packets →
+        #       the box's ONLY ingress dies.
         #
-        # Fix (policy routing): a private table (52814) whose default is the
-        # box's REAL uplink — the current non-tunnel default (auto-detected gw +
-        # dev, i.e. the nspawn host gateway), which openvpn never touches — plus
-        # an ip rule at priority 5200 (ABOVE
-        # tailscale's own 5230) sending tailscale-marked packets there. So
-        # tailscale's uplink always egresses the clean path no matter what
-        # openvpn does to `main`; every OTHER (unmarked) app on the box still
-        # rides the full tunnel as intended. Inbound SSH (dest 100.64.0.0/10)
-        # already rides tailscale's own table-52 rule and is unaffected.
+        # Fix: TWO ip rules ABOVE netbird's 105 (numerically smaller = evaluated
+        # first; ip rules are ordered by priority, not insertion, so this holds
+        # regardless of who installs first):
+        #   prio 100:  fwmark 0x80000 → clean-uplink table 52814 (real non-tunnel
+        #              default) — tailscale underlay always egresses the clean path.
+        #   prio 101:  to 100.64.0.0/10 → tailscale's own table 52 — tailnet peer
+        #              traffic (incl. inbound-SSH replies) resolves via tailscale0
+        #              before netbird's catch-all can grab it.
+        # Both live outside tailscale's managed 5210-5270 range AND below netbird's
+        # 105/110, and netbird only ever deletes its OWN rules — so neither VPN
+        # touches ours. Every OTHER (unmarked, non-tailnet) app still rides the
+        # full netbird tunnel as intended.
         #
         # PartOf tailscaled → re-applied whenever tailscale restarts (which
-        # reinstalls its 52xx rules); our 5200 rule sits outside tailscale's
-        # managed 5210-5270 range so tailscaled leaves it alone.
+        # reinstalls its 52xx rules).
         systemd.services.tailscale-uplink-guard = {
-          description = "Pin tailscale uplink outside a full-tunnel VPN (policy routing)";
+          description = "Pin tailscale uplink + tailnet route outside Netbird full-tunnel (policy routing)";
           after = [
             "tailscaled.service"
             "network.target"
@@ -130,13 +140,16 @@ in
             set -u
             tbl=52814
             # Clean uplink = the current NON-tunnel default route. AUTO-DETECTED
-            # (gw + dev) so we never hardcode the guest iface name — hardcoding
-            # `host0` was wrong and left the guard skipping = zero protection =
-            # SSH dropped when openvpn came up. Retry briefly for the boot race
-            # where the default route isn't installed yet.
+            # (gw + dev) so we never hardcode the guest iface name. Exclude tun/tap
+            # (openvpn-style) AND wt/nb (netbird, in case it runs LEGACY routing and
+            # writes its default into main via wt0). In netbird's default advanced
+            # mode the exit-node default lives in table 7120, not main, so main's
+            # default is already the clean host gateway — but the exclusion is cheap
+            # insurance. Retry briefly for the boot race where the default route
+            # isn't installed yet.
             def=""
             for _ in $(seq 1 10); do
-              def=$(ip route show default 2>/dev/null | grep -vE 'dev (tun|tap)[0-9]*' | head -1)
+              def=$(ip route show default 2>/dev/null | grep -vE 'dev (tun|tap|wt|nb)[0-9]*' | head -1)
               [ -n "$def" ] && break
               sleep 1
             done
@@ -150,26 +163,69 @@ in
               echo "tailscale-uplink-guard: cannot parse default route ($def), skipping" >&2
               exit 0
             fi
-            # Clean uplink table — independent of whatever openvpn does to main.
+            # Clean uplink table — independent of whatever netbird does to main.
             ip route replace default via "$gw" dev "$dev" table "$tbl"
-            # Route tailscale-marked (0x80000) traffic through it, above
-            # tailscale's own `lookup main` rule (5230). Idempotent.
-            ip rule del priority 5200 2>/dev/null || true
-            ip rule add priority 5200 fwmark 0x80000/0xff0000 table "$tbl"
-            echo "tailscale-uplink-guard: fwmark 0x80000 -> table $tbl (default via $gw dev $dev)" >&2
+            # (1) tailscale underlay (0x80000) → clean uplink, above netbird's 110.
+            ip rule del priority 100 2>/dev/null || true
+            ip rule add priority 100 fwmark 0x80000/0xff0000 table "$tbl"
+            # (2) tailnet-destined traffic → tailscale's table 52, above netbird's
+            # 110 catch-all. Table 52 holds tailscale's 100.64.0.0/10 → tailscale0
+            # route once tailscale is up; if it isn't, the lookup just falls through
+            # (no ingress anyway). Idempotent.
+            ip rule del priority 101 2>/dev/null || true
+            ip rule add priority 101 to 100.64.0.0/10 table 52
+            echo "tailscale-uplink-guard: fwmark 0x80000 -> table $tbl (default via $gw dev $dev); 100.64.0.0/10 -> table 52" >&2
+            # NOTE(validate-live): IPv6 tailnet (fd7a:115c:a1e0::/48) is NOT guarded
+            # here — ingress is tailscale-over-IPv4. If the box ever needs v6 tailnet
+            # reachability under netbird's v6 105/110 rules, mirror rule (2) with
+            # `ip -6 rule add priority 101 to fd7a:115c:a1e0::/48 table 52`.
           '';
           preStop = ''
-            ${pkgs.iproute2}/bin/ip rule del priority 5200 2>/dev/null || true
+            ${pkgs.iproute2}/bin/ip rule del priority 100 2>/dev/null || true
+            ${pkgs.iproute2}/bin/ip rule del priority 101 2>/dev/null || true
           '';
         };
 
-        # netbird/openvpn = packages only, unconfigured (user supplies creds
-        # manually). Coding env: claude-code + pi (llm-agents) + herdr binary,
-        # with node/git/gh runtimes. Neovim binary via programs.neovim below.
+        # Office VPN = Netbird (full-tunnel). The daemon runs via the NixOS module;
+        # first login is MANUAL (`netbird up --setup-key ...`, creds out of this
+        # public repo). Unlike openvpn, netbird's client unit is a plain
+        # Type=simple long-running daemon that comes up fast and does NOT block on
+        # tunnel establishment — so it is SAFE in the boot transaction (no
+        # Type=notify deadlock, no post-boot timer needed). Tunnel bring-up happens
+        # asynchronously inside the already-started daemon; autoStart (default true)
+        # makes it reconnect on reboot once configured.
+        services.netbird.enable = true;
+
+        # Order the netbird daemon AFTER the uplink guard so the guard's prio-100/101
+        # rules exist before netbird installs its 105/110 rules. This is ordering
+        # for tidiness only — NOT correctness: ip rules are evaluated by priority
+        # number, not insertion order, so the guard wins regardless of who starts
+        # first, and tailscale marks its underlay (0x80000) from socket creation so
+        # there is no unmarked race window. Deliberately NO ExecStartPre wait on
+        # tailscale: on a fresh (unauthenticated) box tailscale never reaches
+        # Running, so such a wait would block netbird's start for its full timeout
+        # INSIDE the boot transaction → the container never signals Ready → the host
+        # start-times-out and restart-loops the whole box (observed 2026-07-13).
+        # netbird's unit is Type=simple (forks fast, no notify gate), so left plain
+        # it does not block boot. The module names the default client's unit
+        # `netbird.service`.
+        systemd.services.netbird = {
+          after = [
+            "tailscaled.service"
+            "tailscale-uplink-guard.service"
+          ];
+          wants = [
+            "tailscaled.service"
+            "tailscale-uplink-guard.service"
+          ];
+        };
+
+        # netbird/tailscale = the VPNs. Coding env: claude-code + pi (llm-agents)
+        # + herdr binary, with node/git/gh runtimes. The netbird CLI itself is
+        # provided by the services.netbird module (available as `netbird`).
+        # Neovim binary via programs.neovim below.
         environment.systemPackages =
           (with pkgs; [
-            netbird
-            openvpn
             nodejs # claude-code runtime
             # common dev tooling (mirrors modules/cli.nix + dev.nix)
             git
@@ -204,94 +260,6 @@ in
             herdr
           ];
 
-        # Office OpenVPN (full-tunnel). The config file + inline credentials live
-        # ON the box at /etc/openvpn/office.ovpn — NOT in this public repo. This
-        # only wires the systemd unit + DNS handling.
-        #
-        # Root cause of "connected but no name resolution": a manual
-        # `openvpn --config ...` never applied the server-PUSHED DNS, so once
-        # redirect-gateway took the default route, the box had no working
-        # resolver under the tunnel. `updateResolvConf = true` plugs openvpn's
-        # pushed DNS into the box's resolvconf (openresolv — the same stack
-        # tailscale MagicDNS already writes), so both coexist. It also injects
-        # the --up/--down script + script-security automatically; the .ovpn must
-        # therefore NOT carry its own --up/--down lines.
-        #
-        # autoStart = FALSE deliberately — do NOT put openvpn in the boot
-        # transaction. The NixOS module runs openvpn as `Type=notify`, which only
-        # signals systemd "started" after the tunnel fully connects
-        # (`Initialization Sequence Completed`). As a boot-time (multi-user.target)
-        # unit that meant: guest boot blocks on openvpn's start job → the nspawn
-        # container never signals "Ready" → the host `container@bareksa-box`
-        # hits its start timeout and RESTART-LOOPS the whole container (observed:
-        # NRestarts climbing, container stuck `activating`). openvpn is famously
-        # bad at this. Instead we start it POST-boot via a timer (below).
-        services.openvpn.servers.office = {
-          config = "config /etc/openvpn/office.ovpn";
-          updateResolvConf = true;
-          autoStart = false;
-        };
-
-        # Bound + reorder the office VPN unit (the module names it openvpn-office).
-        systemd.services."openvpn-office" = {
-          after = [
-            "tailscaled.service"
-            "tailscale-uplink-guard.service"
-          ];
-          wants = [
-            "tailscaled.service"
-            "tailscale-uplink-guard.service"
-          ];
-          serviceConfig = {
-            # Type=exec, NOT the module's notify: "started" = process is running,
-            # not "tunnel is up". openvpn retries the connection itself
-            # (resolv-retry infinite) — we never want systemd to sit in
-            # `activating` waiting for a tunnel, nor Restart-loop when the office
-            # server is briefly unreachable.
-            Type = lib.mkForce "exec";
-            # Even started post-boot by the timer, gate on tailscale actually
-            # being Running before openvpn's redirect-gateway touches the route
-            # table. At boot tailscale reconnects asynchronously and only marks
-            # its packets (fwmark 0x80000) once its netfilter is fully up; if
-            # openvpn hijacks the default first, the in-flight tailscale handshake
-            # isn't marked yet → hits `main` → into the office tunnel → blocked →
-            # tailscale never comes up, never marks → deadlock (SSH ingress dead).
-            # Because openvpn is out of the boot transaction, this wait no longer
-            # gates the container's Ready signal. Capped so it never hangs forever.
-            ExecStartPre = pkgs.writeShellScript "wait-tailscale-running" ''
-              for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
-                state=$(${pkgs.tailscale}/bin/tailscale status --json 2>/dev/null \
-                  | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null)
-                [ "$state" = "Running" ] && exit 0
-                ${pkgs.coreutils}/bin/sleep 1
-              done
-              echo "wait-tailscale-running: not Running after 60s, starting openvpn anyway" >&2
-              exit 0
-            '';
-            # Bound shutdown: openvpn's SIGTERM stop (down-script + explicit-exit-
-            # notify to the server) can hang toward systemd's 90s default, and the
-            # nspawn container's poweroff waits on it — which in turn blocks a host
-            # `nixos-rebuild switch`. A normal stop finishes well under a second
-            # (local resolvconf down-script + one UDP notify), so cap hard at 3s;
-            # past that SIGKILL — the tunnel is stateless, a hard kill is safe.
-            TimeoutStopSec = "3s";
-          };
-        };
-
-        # Autostart openvpn POST-boot via a timer, NOT via multi-user.target.
-        # timers.target arms instantly (the timer unit doesn't wait on openvpn),
-        # so the guest reaches Ready without ever blocking on the tunnel; the
-        # timer then fires ~20s later and starts openvpn-office — by which point
-        # boot is done and tailscale is (or is about to be) Running.
-        systemd.timers."openvpn-office-autostart" = {
-          wantedBy = [ "timers.target" ];
-          timerConfig = {
-            OnBootSec = "20s";
-            AccuracySec = "1s";
-            Unit = "openvpn-office.service";
-          };
-        };
-
         # Neovim (no config — user manages it manually), mirroring the host's
         # modules/neovim.nix defaults.
         programs.neovim = {
@@ -323,9 +291,6 @@ in
         # provisions host-specific project workspaces that don't exist here; run
         # sessions by hand via `herdr` instead. Needs linger (below) to run
         # without an active login.
-        # System-level systemd.user schema (lowercase description/wantedBy/
-        # serviceConfig) — NOT the home-manager Unit/Service/Install schema the
-        # host uses.
         systemd.user.slices.sessions.sliceConfig.CPUWeight = "100";
         systemd.user.services.herdr-server = {
           description = "herdr server (terminal workspace daemon for coding sessions)";
@@ -416,19 +381,13 @@ in
         networking.firewall.enable = true;
         networking.firewall.allowedTCPPorts = [ 22 ];
 
-        # Office-internal hostnames, reachable over the office VPN (full-tunnel).
-        # Mirrors ~/dotfiles nixos/environments/bareksa/system/networking.nix.
-        # /etc/hosts wins over DNS, so gitlab.bareksa.com forces the internal IP
-        # even when the pushed VPN DNS would return a public Cloudflare address.
-        networking.extraHosts = ''
-          192.168.50.217 gitlab.bareksa.com
-          192.168.3.50 kafka.dev.bareksa.local
-          192.168.50.102 kafka-host-1 kafka-cluster-jkt-1
-          192.168.50.103 kafka-host-2 kafka-cluster-jkt-2
-          192.168.50.104 kafka-host-3 kafka-cluster-jkt-3
-          10.138.192.35 redis-stock.dev.bareksa.local
-          192.168.50.202 kafka-console.prod.bareksa.local
-        '';
+        # Strategix office-internal hostnames, reachable over the netbird VPN.
+        # Fill in once the internal IPs are known — /etc/hosts wins over DNS, so
+        # this forces internal IPs even when the pushed VPN DNS would return a
+        # public address (same pattern as bareksa-box). Empty until provided.
+        # networking.extraHosts = ''
+        #   <ip> <hostname>
+        # '';
 
         # Timezone + locale mirror the host (configuration.nix + modules/locale.nix):
         # en_US.UTF-8 base, id_ID.UTF-8 for the LC_* formatting categories, and
@@ -454,7 +413,8 @@ in
   };
 
   # Host NAT for container egress — mirrors wireguard.nix's iptables pattern,
-  # stays on iptables (no nftables flip). `ve-+` is the nspawn veth wildcard.
+  # stays on iptables (no nftables flip). `ve-+` is the nspawn veth wildcard
+  # (shared with bareksa-box; both containers' veths match it).
   networking.nat = {
     enable = true;
     externalInterface = externalInterface;
@@ -465,21 +425,21 @@ in
   networking.firewall.trustedInterfaces = [ "ve-+" ];
 
   # cgroup containment: nspawn containers run as root-level
-  # `container@bareksa-box.service`, OUTSIDE user.slice — pin it into its own
+  # `container@strategix-box.service`, OUTSIDE user.slice — pin it into its own
   # slice so it doesn't compete unbounded against jellyfin/coding sessions.
   # CPUWeight=100 matches the coding tier (sessions.slice) per cpu-priority.md;
   # no hard MemoryMax (immich-style soft throttle only).
-  systemd.slices.bareksa.sliceConfig = {
+  systemd.slices.strategix.sliceConfig = {
     CPUWeight = "100";
     MemoryHigh = "8G"; # TODO(tune): observe real VPN+podman peak via below/Grafana
   };
 
   # nixos-containers.nix already sets Slice = "machine.slice" — mkForce ours over it.
-  systemd.services."container@bareksa-box".serviceConfig.Slice = lib.mkForce "bareksa.slice";
+  systemd.services."container@strategix-box".serviceConfig.Slice = lib.mkForce "strategix.slice";
 
-  # TODO(bareksa-box telemetry): nspawn forwards guest journald to the host
+  # TODO(strategix-box telemetry): nspawn forwards guest journald to the host
   # journal automatically; host Alloy already ships it to Loki. Confirm the
-  # Alloy loki.source.journal config keeps container="bareksa-box" (or
+  # Alloy loki.source.journal config keeps container="strategix-box" (or
   # _MACHINE_ID) as a low-cardinality label. Optional follow-up: a
-  # bareksa_vpn_tunnel_up{provider} gauge once the user configures the VPN.
+  # strategix_vpn_tunnel_up{provider="netbird"} gauge once the VPN is configured.
 }

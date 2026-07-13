@@ -41,6 +41,7 @@
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPO1aSG3/1vrgEPgK038tZ8+ipz3gZqr9hRT0JUteJXY tigor@fort"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB/dGHD56+3qsLhUvmG4GeN8JrpYw7oGt0iQT+WkZzFu tigor@nexus"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGUdNT+Pr015Li6Jp9cb1vCghd2C8EnecYwSC98qQCxl tigor@envy"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKz9QiADKsexZdggCZpGuwBQp3yeZ4ulOVaTAQ5dx1tv tigor@windows"
     ];
     linger = true;
   };

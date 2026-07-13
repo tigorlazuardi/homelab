@@ -42,5 +42,6 @@
     ./pi-web.nix
     ./herdr-web-tui.nix
     ./bareksa-box.nix
+    ./strategix-box.nix
   ];
 }
