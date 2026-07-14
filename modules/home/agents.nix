@@ -32,6 +32,8 @@
       chezmoi
       python3
       wget
+      rtk
+      (callPackage ../../packages/toon.nix { })
     ]);
 
   programs.npm = {
