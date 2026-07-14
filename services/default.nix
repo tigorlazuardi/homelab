@@ -43,5 +43,8 @@
     ./herdr-web-tui.nix
     ./bareksa-box.nix
     ./strategix-box.nix
+    # self-hosted GitHub Actions runner for the private ring-road repo, isolated
+    # in its own nspawn box with nested rootless podman.
+    ./ring-road-ci.nix
   ];
 }
