@@ -79,11 +79,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1783873349,
-        "narHash": "sha256-Dq6nPgrpDqoHWfrMqaqlJU0R/YdU5iMe/p7oAIu3NYo=",
+        "lastModified": 1783994058,
+        "narHash": "sha256-zq7LVbDwkHrX3omtKsCwwAI8v2ZmCRX+Cd+fTfNuRz4=",
         "owner": "tigorlazuardi",
         "repo": "herdr-web-tui",
-        "rev": "dc9c424a4e9828a6a2dcda8e2deb2374e4268e5c",
+        "rev": "ca18f3c9cc1fbd328d31cdfa9b0ba238125043d6",
         "type": "github"
       },
       "original": {
@@ -121,11 +121,11 @@
         "treefmt-nix": "treefmt-nix"
       },
       "locked": {
-        "lastModified": 1783941568,
-        "narHash": "sha256-AHQn1X6GKbYBEElx+eCVuyouKodXq/39u3CuUUsHQy8=",
+        "lastModified": 1784012825,
+        "narHash": "sha256-lbdkOH57StVOFMEpFASzEmi+GlK3iX6Uu7Y2zGUgVFE=",
         "owner": "numtide",
         "repo": "llm-agents.nix",
-        "rev": "5cefe9e186d79d89abd38b3a225d8eb3b6d64ae3",
+        "rev": "5c73869318afcf796a7a465b4b5e31b27f0819d4",
         "type": "github"
       },
       "original": {
