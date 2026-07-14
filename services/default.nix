@@ -33,13 +33,13 @@
     ./jdownloader.nix
     ./navidrome.nix
     ./omniroute.nix
+    ./remote-pi-relay.nix
     ./qbittorrent.nix
     ./immich.nix
     ./paperless-ngx.nix
     ./infisical.nix
     ./webhook.nix
     ./wallrus.nix
-    ./pi-web.nix
     ./herdr-web-tui.nix
     ./bareksa-box.nix
     ./strategix-box.nix
