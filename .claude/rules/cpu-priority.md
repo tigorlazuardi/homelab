@@ -1,3 +1,17 @@
+---
+description: CPU and memory priority rules for host services.
+paths:
+  - "modules/cpu-budget.nix"
+  - "services/vpn-nspawn-box.nix"
+  - "modules/memory-budget.nix"
+  - "modules/watchdog.nix"
+  - "services/media-slice.nix"
+  - "modules/home/herdr-sessions.nix"
+  - "services/jellyfin.nix"
+  - "services/ytptube.nix"
+  - "services/immich.nix"
+---
+
 # CPU Priority
 
 All user processes share a hard ceiling: `user.slice` CPUQuota=680% (85% of 8 threads).

@@ -1,4 +1,5 @@
 ---
+description: Prevent host hangs from failing HDDs.
 paths:
   - "modules/disk-error-recovery.nix"
   - "modules/memory-budget.nix"

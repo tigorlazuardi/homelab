@@ -1,4 +1,5 @@
 ---
+description: Rules for rootless container networking.
 paths:
   - "services/**.nix"
   - "modules/quadlet-service.nix"
