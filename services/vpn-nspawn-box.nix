@@ -158,6 +158,59 @@ in
               just
               mise # runtime/tool version manager
               oscclip # osc52-copy/osc52-paste — clipboard over terminal escape (SSH/herdr-safe)
+
+              # python dev
+              python3
+              uv
+              ruff
+              mypy
+              pyright
+              pipx
+
+              # language servers
+              nixd
+              lua-language-server
+              typescript-language-server
+              vscode-langservers-extracted
+              yaml-language-server
+              bash-language-server
+              marksman
+
+              # formatters/linters
+              shfmt
+              shellcheck
+              stylua
+              prettier
+              taplo
+              yamllint
+              hadolint
+              nixfmt
+
+              # go toolchain
+              go
+              delve
+              golangci-lint
+              gotools
+
+              # office/data-stack CLIs
+              kcat
+              postgresql
+              redis
+              grpcurl
+              kubectl
+              k9s
+              httpie
+              yq-go
+              websocat
+
+              # misc CLIs + git
+              lazygit
+              git-lfs
+              watchexec
+              hyperfine
+              jless
+              sd
+              ncdu
             ])
             ++ [
               agents.claude-code
