@@ -95,6 +95,7 @@ let
     {
       name = "Config Management";
       dir = "homelab";
+      harness = "pi";
     }
     {
       name = "Chezmoi";
