@@ -190,60 +190,72 @@ let
     done
   '';
 
-  # Idempotent provisioner: for each enabled session, ensure a workspace labeled
-  # s.name exists; when creating one, start a claude pane in it and close the
-  # root shell pane `workspace create` auto-spawns (claude fills the workspace,
-  # zellij-layout parity). Existing workspaces are left untouched (herdr's own
-  # snapshot restore owns those). JSON paths verified live against v0.7.1.
-  provision = pkgs.writeShellScript "herdr-provision" ''
+  # ── systemd-owned session lifecycle (replaces oneshot + snapshot restore) ─────
+  # Each durable session is its OWN Type=simple, Restart=always user service. The
+  # pair of scripts below is the ExecStartPre/ExecStart body, parameterized by
+  # positional args so one script serves every session.
+
+  # Shared daemon-ready wait — `status server` exits 0 even when down, so parse it.
+  waitDaemon = ''
+    up() { herdr status server 2>/dev/null | grep -q '^status: running'; }
+    for _ in $(seq 1 30); do up && break; sleep 1; done
+    if ! up; then echo "herdr server never became ready" >&2; exit 1; fi
+  '';
+
+  # ExecStartPre — $1=label $2=cwd $3=repo(optional). REFRESH: destroy any
+  # workspace carrying this label (there may be a stale one herdr's snapshot
+  # restored, or a remnant from the pane the user just destroyed), then clone the
+  # repo if the project dir is missing. Runs before every (re)start.
+  sessionPre = pkgs.writeShellScript "herdr-session-pre" ''
     set -u
     export PATH="${userPath}:$PATH"
     jq=${pkgs.jq}/bin/jq
-
-    # Wait for the daemon to accept commands. NB: `status server` exits 0 even
-    # when the server is down — parse the output, don't trust the exit code.
-    up() { herdr status server 2>/dev/null | grep -q '^status: running'; }
-    for _ in $(seq 1 30); do
-      up && break
-      sleep 1
-    done
-    if ! up; then
-      echo "herdr server never became ready" >&2
-      exit 1
+    label=$1 cwd=$2 repo=''${3:-}
+    ${waitDaemon}
+    herdr workspace list 2>/dev/null \
+      | $jq -r --arg l "$label" '.result.workspaces[]? | select(.label==$l) | .workspace_id' \
+      | while read -r ws; do
+          [ -n "$ws" ] || continue
+          echo "destroying stale workspace '$label' ($ws)"
+          herdr workspace close "$ws" || true
+        done
+    if [ -n "$repo" ] && [ ! -d "$cwd/.git" ]; then
+      echo "cloning $repo -> $cwd"
+      git clone "$repo" "$cwd" || { echo "clone failed for '$label'" >&2; exit 1; }
     fi
+    exit 0
+  '';
 
-    existing=$(herdr workspace list 2>/dev/null | $jq -r '.result.workspaces[].label // empty' || true)
+  # ExecStart — $1=label $2=agent-name $3=cwd $4=harness-cmd. Create the workspace
+  # fresh (so the full agent argv, incl. --remote-control via the harness, always
+  # applies), start the agent pane, close the auto-spawned root shell pane, then
+  # BLOCK watching the agent. When it vanishes (user destroyed the space/pane to
+  # reload the harness), exit so Restart=always remakes it. claude-hr/pi-hr still
+  # wrap the agent, so an in-pane claude/pi crash heals without tearing the space.
+  sessionRun = pkgs.writeShellScript "herdr-session-run" ''
+    set -u
+    export PATH="${userPath}:$PATH"
+    jq=${pkgs.jq}/bin/jq
+    label=$1 name=$2 cwd=$3 harness=$4
+    ${waitDaemon}
+    echo "creating workspace '$label' at $cwd"
+    resp=$(herdr workspace create --cwd "$cwd" --label "$label" --no-focus)
+    ws=$(printf '%s' "$resp" | $jq -r '.result.workspace.workspace_id // empty')
+    root=$(printf '%s' "$resp" | $jq -r '.result.root_pane.pane_id // empty')
+    if [ -z "$ws" ]; then echo "failed to create workspace '$label': $resp" >&2; exit 1; fi
+    herdr agent start "$name" --workspace "$ws" --cwd "$cwd" --no-focus -- "$harness" "$label" \
+      || { echo "agent start failed for '$label'" >&2; exit 1; }
+    [ -n "$root" ] && herdr pane close "$root" || true
 
-    ensure() { # $1=label $2=agent-name $3=cwd $4=harness-cmd $5=repo(optional)
-      if printf '%s\n' "$existing" | grep -qxF "$1"; then
-        echo "workspace '$1' present — skip"
-        return 0
-      fi
-      if [ -n "$5" ] && [ ! -d "$3/.git" ]; then
-        echo "cloning $5 -> $3"
-        git clone "$5" "$3" || { echo "clone failed for '$1'" >&2; return 1; }
-      fi
-      echo "creating workspace '$1' at $3"
-      resp=$(herdr workspace create --cwd "$3" --label "$1" --no-focus)
-      ws=$(printf '%s' "$resp" | $jq -r '.result.workspace.workspace_id // empty')
-      root=$(printf '%s' "$resp" | $jq -r '.result.root_pane.pane_id // empty')
-      if [ -z "$ws" ]; then
-        echo "failed to create workspace '$1': $resp" >&2
-        return 1
-      fi
-      herdr agent start "$2" --workspace "$ws" --cwd "$3" --no-focus \
-        -- "$4" "$1" || return 1
-      [ -n "$root" ] && herdr pane close "$root"
-      return 0
-    }
+    # Grace: wait for the agent to register (up to ~20s) before treating a missing
+    # agent as destroyed, else a slow start would drop us straight into a restart.
+    for _ in $(seq 1 20); do herdr agent get "$name" >/dev/null 2>&1 && break; sleep 1; done
 
-    rc=0
-    ${lib.concatMapStrings (s: ''
-      ensure ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} ${lib.escapeShellArg (harnessBin s)} ${
-        lib.escapeShellArg (s.repo or "")
-      } || rc=1
-    '') enabledSessions}
-    exit $rc
+    # Watch: block while the agent/pane lives; exit when it's gone. `agent get`
+    # exits non-zero (agent_not_found) once the pane is destroyed.
+    while herdr agent get "$name" >/dev/null 2>&1; do sleep 4; done
+    echo "agent '$name' gone — exiting so systemd remakes the space" >&2
+    exit 0
   '';
 in
 {
@@ -251,8 +263,11 @@ in
   programs.herdr.enable = true;
   programs.herdr.settings = {
     onboarding = false;
-    # This may cause bugs with claude not recognizing --remote-control, but auto remote control can be set with config.
-    session.resume_agents_on_restore = true;
+    # Restore OFF. herdr's snapshot restore rebuilds a pane but does NOT carry the
+    # agent's start argv (notably `--remote-control <name>`), so a restored claude
+    # pane loses its remote-control identity. systemd owns the session lifecycle
+    # instead — one herdr-session-<slug>.service per durable session (below).
+    session.resume_agents_on_restore = false;
     # Binary is nix-managed (flake input, pinned tag) — no self-update nagging.
     update.version_check = false;
     # Headless host: no audio sink; sound is the attaching client's business.
@@ -298,23 +313,41 @@ in
       };
     };
 
-    # Provision workspaces after every daemon (re)start. PartOf propagates a
-    # herdr-server restart into a re-run of this oneshot (After alone only
-    # orders the initial boot).
-    herdr-sessions = {
-      Unit = {
-        Description = "Provision durable claude workspaces in herdr";
-        After = [ "herdr-server.service" ];
-        Requires = [ "herdr-server.service" ];
-        PartOf = [ "herdr-server.service" ];
+  }
+  # One Type=simple service per durable session. After+Requires+PartOf herdr-server
+  # so a daemon (re)start propagates into a full teardown+remake of every session
+  # (PartOf restarts the unit; its ExecStartPre destroys the snapshot-restored
+  # workspace and ExecStart recreates it fresh). Restart=always is what remakes a
+  # space the user destroyed to reload the harness.
+  // (lib.listToAttrs (
+    map (s: {
+      name = "herdr-session-${slug s.name}";
+      value = {
+        Unit = {
+          Description = "herdr session: ${s.name}";
+          After = [ "herdr-server.service" ];
+          Requires = [ "herdr-server.service" ];
+          PartOf = [ "herdr-server.service" ];
+        };
+        Install.WantedBy = [ "default.target" ];
+        Service = {
+          Type = "simple";
+          Environment = [
+            "PATH=${userPath}"
+            "TERM=xterm-256color"
+            "COLORTERM=truecolor"
+          ];
+          ExecStartPre = "${sessionPre} ${lib.escapeShellArg s.name} ${
+            lib.escapeShellArg "${home}/${s.dir}"
+          } ${lib.escapeShellArg (s.repo or "")}";
+          ExecStart = "${sessionRun} ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${
+            lib.escapeShellArg "${home}/${s.dir}"
+          } ${lib.escapeShellArg (harnessBin s)}";
+          Slice = "sessions.slice";
+          Restart = "always";
+          RestartSec = 5;
+        };
       };
-      Install.WantedBy = [ "default.target" ];
-      Service = {
-        Type = "oneshot";
-        Environment = [ "PATH=${userPath}" ];
-        ExecStart = "${provision}";
-        Slice = "sessions.slice";
-      };
-    };
-  };
+    }) enabledSessions
+  ));
 }
