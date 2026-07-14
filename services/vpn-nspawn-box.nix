@@ -145,6 +145,7 @@ in
               tree
               gnumake
               gcc
+              gopls # Go language server (nixpkgs)
               # modern CLI (bat/eza/zoxide already wired via programs below)
               bat
               eza

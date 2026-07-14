@@ -14,6 +14,7 @@
     python3
     gnumake
     gcc
+    gopls # Go language server (nixpkgs)
     nixfmt
     chezmoi
     oscclip # osc52-copy/osc52-paste — clipboard over terminal escape (SSH-safe)
