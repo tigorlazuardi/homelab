@@ -95,6 +95,7 @@
       ./home/tuxedo.nix
       ./home/herdr-sessions.nix
       ./home/herdr-claude-retry.nix
+      ./home/herdr-plus.nix
       ./home/comma.nix
       ./home/pi-web.nix
       ./home/herdr-web-tui.nix
