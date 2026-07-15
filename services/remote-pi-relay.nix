@@ -16,7 +16,9 @@
 {
   homelab.containers.remote-pi-relay = {
     image = "docker.io/jacobmoura7/remote-pi-relay@sha256:b88b1984a20170debf569937b5a1245dd325b38aba3ef46f327962b733be446a"; # v0.2.2
-    port = 3000; # REMOTEPI_RELAY_PORT default; nginx vhost remote-pi-relay.tigor.web.id auto-created
+    port = 3000; # container port
+    hostPort = 3051; # ponytail: avoid AdGuard host port 3000; change if 3051 becomes occupied
+    subdomain = "pi-relay"; # nginx vhost pi-relay.tigor.web.id
     userns = null; # image runs as root → default rootless userns maps to host srv
     volumes = [ "/var/mnt/state/remote-pi-relay:/data" ]; # mesh.db (owner-signed blobs) → state tier
     environments = { TZ = "Asia/Jakarta"; }; # REMOTEPI_RELAY_PORT / REMOTEPI_MESH_DB_PATH already baked in image

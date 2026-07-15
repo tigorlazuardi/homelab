@@ -32,13 +32,15 @@ in
         "192.168.100.0/24" # LAN
         "10.0.0.0/24" # wireguard VPN
         "100.64.0.0/10" # tailscale (CGNAT)
+        "34.101.123.241/32" # Bareksa OpenVPN egress
+        "103.156.119.209/32" # Bareksa NetBird egress
         "127.0.0.1" # loopback
       ];
       description = "Source ranges allowed to reach a private vhost. Add/change a remote-access range here once; every private vhost picks it up.";
     };
     privateAllow = mkOption {
       type = types.lines;
-      description = "Rendered nginx allow/deny block for a private vhost (LAN + wireguard + tailscale + loopback, deny all). Reference from any hand-written private vhost's location extraConfig; the helper injects it via `private = true`.";
+      description = "Rendered nginx allow/deny block for a private vhost (trusted ranges, deny all). Reference from any hand-written private vhost's location extraConfig; the helper injects it via `private = true`.";
     };
   };
 
