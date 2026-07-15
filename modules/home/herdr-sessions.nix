@@ -31,10 +31,14 @@
   config,
   lib,
   osConfig,
+  inputs,
   ...
 }:
 let
   home = config.home.homeDirectory;
+  agents = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system};
+  piBin = "${agents.pi}/bin/pi";
+  claudeBin = "${agents.claude-code}/bin/claude";
 
   # herdr binary from nixpkgs via the home-manager programs.herdr module
   # (enabled below). Was the `herdr` flake input; now nixpkgs-managed.
@@ -148,6 +152,12 @@ let
       dir = "projects/pi-sheepdog";
       harness = "pi";
     } # local git init, no remote
+    {
+      name = "Nix LLM Agents Config";
+      dir = "projects/nix-llm-agents-config";
+      harness = "pi";
+      repo = "git@github.com:tigorlazuardi/nix-llm-agents-config.git";
+    }
   ];
 
   enabledSessions = lib.filter (s: s.enable or true) sessions;
@@ -171,7 +181,7 @@ let
     export PATH="${userPath}:$PATH"
     name="''${1:-claude}"
     while true; do
-      claude --continue --remote-control "$name" || claude --remote-control "$name"
+      ${claudeBin} --continue --remote-control "$name" || ${claudeBin} --remote-control "$name"
       echo "claude exited — restarting in 3s (ctrl-c to get a shell)" >&2
       sleep 3 || exec ''${SHELL:-bash}
     done
@@ -185,7 +195,7 @@ let
   pi-hr = pkgs.writeShellScriptBin "pi-hr" ''
     export PATH="${userPath}:$PATH"
     while true; do
-      pi --continue || pi
+      ${piBin} --continue || ${piBin}
       echo "pi exited — restarting in 3s (ctrl-c to get a shell)" >&2
       sleep 3 || exec ''${SHELL:-bash}
     done
@@ -213,7 +223,7 @@ let
     jq=${pkgs.jq}/bin/jq
     label=$1 cwd=$2 repo=''${3:-}
     ${waitDaemon}
-    herdr workspace list 2>/dev/null \
+    ${config.programs.herdr.package}/bin/herdr workspace list 2>/dev/null \
       | $jq -r --arg l "$label" '.result.workspaces[]? | select(.label==$l) | .workspace_id' \
       | while read -r ws; do
           [ -n "$ws" ] || continue
@@ -338,12 +348,10 @@ in
             "TERM=xterm-256color"
             "COLORTERM=truecolor"
           ];
-          ExecStartPre = "${sessionPre} ${lib.escapeShellArg s.name} ${
-            lib.escapeShellArg "${home}/${s.dir}"
-          } ${lib.escapeShellArg (s.repo or "")}";
-          ExecStart = "${sessionRun} ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${
-            lib.escapeShellArg "${home}/${s.dir}"
-          } ${lib.escapeShellArg (harnessBin s)}";
+          ExecStartPre = "${sessionPre} ${lib.escapeShellArg s.name} ${lib.escapeShellArg "${home}/${s.dir}"} ${
+            lib.escapeShellArg (s.repo or "")
+          }";
+          ExecStart = "${sessionRun} ${lib.escapeShellArg s.name} ${lib.escapeShellArg (slug s.name)} ${lib.escapeShellArg "${home}/${s.dir}"} ${lib.escapeShellArg (harnessBin s)}";
           Slice = "sessions.slice";
           Restart = "always";
           RestartSec = 5;
