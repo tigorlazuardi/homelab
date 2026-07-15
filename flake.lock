@@ -202,6 +202,22 @@
         "type": "github"
       }
     },
+    "nixpkgs_4": {
+      "locked": {
+        "lastModified": 1783776592,
+        "narHash": "sha256-UgCQzxeWI75XM8G+hPrPh+MKzEPjG3SpAj7dtqSbksA=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "e7a3ca8092b61ff85b6a45bf863ea2b2d6a661b3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "quadlet-nix": {
       "locked": {
         "lastModified": 1782004439,
@@ -226,7 +242,8 @@
         "nix-index-database": "nix-index-database",
         "nixpkgs": "nixpkgs_3",
         "quadlet-nix": "quadlet-nix",
-        "sops-nix": "sops-nix"
+        "sops-nix": "sops-nix",
+        "switchd": "switchd"
       }
     },
     "sops-nix": {
@@ -246,6 +263,24 @@
       "original": {
         "owner": "Mic92",
         "repo": "sops-nix",
+        "type": "github"
+      }
+    },
+    "switchd": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_4"
+      },
+      "locked": {
+        "lastModified": 1783963727,
+        "narHash": "sha256-FrqOGnaAZaukRsi+F1N7fDEom7JqWtS420ny6d1wWrQ=",
+        "owner": "tigorlazuardi",
+        "repo": "nixos-switch-approval-telegram-portal",
+        "rev": "b4c9dc1cf392c3799e8c32f72a72aa57f28eeaee",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tigorlazuardi",
+        "repo": "nixos-switch-approval-telegram-portal",
         "type": "github"
       }
     },
