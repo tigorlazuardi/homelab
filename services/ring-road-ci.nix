@@ -156,6 +156,17 @@ in
           ];
         };
 
+        # ponytail: network-online + systemd retry handles transient boot readiness;
+        # add active HTTPS precheck only if this proves insufficient.
+        systemd.services.github-runner-ring-road-ci = {
+          after = lib.mkForce [ "network-online.target" ];
+          wants = lib.mkForce [ "network-online.target" ];
+          serviceConfig = {
+            Restart = lib.mkForce "on-failure";
+            RestartSec = "10s";
+          };
+        };
+
         # Unpatched dynamic binaries (mise/asdf toolchains, downloaded tools, LSPs)
         # + /usr/bin/env — mirrors the office boxes.
         programs.nix-ld.enable = true;
@@ -167,6 +178,13 @@ in
           gh
           cacert
         ];
+
+        # Host resolv.conf points at a loopback systemd-resolved stub, invalid in
+        # this guest netns; use the host AdGuard LAN address.
+        networking = {
+          useHostResolvConf = false;
+          nameservers = [ "192.168.100.5" ];
+        };
 
         time.timeZone = "Asia/Jakarta";
         i18n.defaultLocale = "en_US.UTF-8";
