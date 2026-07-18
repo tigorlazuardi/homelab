@@ -162,8 +162,14 @@ in
   systemd.services = {
     ring-road-ci-podman-socket = {
       description = "Start Ring Road CI rootless Podman socket";
-      after = [ "user@${toString uid}.service" ];
-      requires = [ "user@${toString uid}.service" ];
+      after = [
+        "home-manager-${user}.service"
+        "user@${toString uid}.service"
+      ];
+      requires = [
+        "home-manager-${user}.service"
+        "user@${toString uid}.service"
+      ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
