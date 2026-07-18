@@ -171,14 +171,8 @@ in
       };
     };
     github-runner-ring-road-ci = {
-      after = [
-        "sops-install-secrets.service"
-        "ring-road-ci-podman-socket.service"
-      ];
-      requires = [
-        "sops-install-secrets.service"
-        "ring-road-ci-podman-socket.service"
-      ];
+      after = [ "ring-road-ci-podman-socket.service" ];
+      requires = [ "ring-road-ci-podman-socket.service" ];
       serviceConfig = {
         Restart = lib.mkForce "on-failure";
         RestartSec = "10s";
