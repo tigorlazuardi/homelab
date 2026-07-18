@@ -7,6 +7,7 @@
     ./tailscale.nix
     ./samba.nix
     ./smartd.nix
+    ./switchd.nix
     # auth (forward-auth proxy + IdP; declares the per-vhost tinyauth option)
     ./auth.nix
     # observability (native Alloy gateway + Prometheus/Loki/Tempo/Grafana)

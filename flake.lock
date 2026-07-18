@@ -271,11 +271,11 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1783963727,
-        "narHash": "sha256-FrqOGnaAZaukRsi+F1N7fDEom7JqWtS420ny6d1wWrQ=",
+        "lastModified": 1784204172,
+        "narHash": "sha256-dFQBIpQ/hKroCQ1ylGtnUMrwlul1LDysceV/idvG7DY=",
         "owner": "tigorlazuardi",
         "repo": "nixos-switch-approval-telegram-portal",
-        "rev": "b4c9dc1cf392c3799e8c32f72a72aa57f28eeaee",
+        "rev": "2d4ba7142ceeaaa91b8195376d821dbd8b2ff346",
         "type": "github"
       },
       "original": {

@@ -17,8 +17,9 @@ keys.txt
 # direnv
 .direnv/
 
-# Remote Pi per-checkout runtime state
+# Pi per-checkout runtime state
 /.pi/remote-pi/
+/.pi-subagents/
 
 # tuxedo (todo.txt) lock files
 *.tuxedo-lock
