@@ -21,6 +21,7 @@ let
     "-/srv/data"
     "-/var/lib/containers"
     "-/var/mnt/fenrir"
+    "-/var/mnt/nas"
     "-/var/mnt/state"
     "-/var/mnt/wolf"
   ];
@@ -67,6 +68,8 @@ in
     home.username = user;
     home.homeDirectory = "/home/${user}";
     home.stateVersion = "25.11";
+    # Scope daemon sandbox to CI user's manager; a global user-unit override would
+    # also hide production paths from srv's production Podman daemon.
     xdg.configFile."systemd/user/podman.service.d/10-ring-road-ci-sandbox.conf".text = ''
       [Service]
       InaccessiblePaths=${lib.concatStringsSep " " productionPaths}

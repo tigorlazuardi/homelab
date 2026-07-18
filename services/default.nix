@@ -43,8 +43,9 @@
     ./herdr-web-tui.nix
     ./bareksa-box.nix
     ./strategix-box.nix
-    # self-hosted GitHub Actions runner for the private ring-road repo, isolated
-    # in its own nspawn box with nested rootless podman.
+    # Native dedicated-user runner for trusted internal ring-road CI. Its rootless
+    # Podman daemon gets production-path denial; dedicated user slice caps all CI work.
+    # Use a VM for fork, external, or otherwise untrusted workflows.
     ./ring-road-ci.nix
   ];
 }
