@@ -88,10 +88,10 @@ in
         # dist/, zero runtime deps, run with node. Bump: version + hash.
         herdr-claude-retry = pkgs.stdenvNoCC.mkDerivation {
           pname = "herdr-claude-retry";
-          version = "0.1.7";
+          version = "0.1.8";
           src = pkgs.fetchurl {
-            url = "https://registry.npmjs.org/@tigorhutasuhut/herdr-claude-retry/-/herdr-claude-retry-0.1.7.tgz";
-            hash = "sha256-h4xv72wgGDkN3p+LRJQUQ9MFx0TbLik9Kgr6t656dGM=";
+            url = "https://registry.npmjs.org/@tigorhutasuhut/herdr-claude-retry/-/herdr-claude-retry-0.1.8.tgz";
+            hash = "sha256-tU+vGEpCuQjniv4CDsJTzgnrTl+Zs0JNedHbrjVnWcY=";
           };
           installPhase = ''
             mkdir -p $out/lib
@@ -319,6 +319,14 @@ in
             enable = true;
             dockerCompat = true;
             defaultNetwork.settings.dns_enabled = true;
+          };
+
+          # ponytail: systemd-nspawn overmounts /proc, so kernel mount_too_revealing
+          # blocks rootless crun. Fully exposed secondary guest procfs is compatibility
+          # escape hatch; ceiling/upgrade path is VM for hostile code.
+          fileSystems."/root/proc2" = {
+            fsType = "proc";
+            options = [ "nosuid" "nodev" "noexec" "hidepid=2" "subset=pid" ];
           };
 
           # SSH-ready login user `tigor` (the operator), same authorized key set as

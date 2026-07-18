@@ -119,6 +119,12 @@ let
       repo = "git@github.com:tigorlazuardi/ring-road.git";
     }
     {
+      name = "Walk";
+      dir = "projects/walk";
+      harness = "pi";
+      repo = "git@github.com:tigorlazuardi/walk.git";
+    }
+    {
       name = "Herdr Sheepdog";
       dir = "projects/herdr-sheepdog";
       harness = "pi";
