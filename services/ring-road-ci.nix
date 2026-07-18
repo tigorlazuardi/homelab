@@ -5,12 +5,14 @@
   config,
   lib,
   pkgs,
+  utils,
   ...
 }:
 let
   name = "ring-road-ci";
   user = "ring-road-ci";
   uid = 1500;
+  homeManagerService = "home-manager-${utils.escapeSystemdPath user}.service";
   runtimeDir = "/run/user/${toString uid}";
   podmanSocket = "unix://${runtimeDir}/podman/podman.sock";
   nixPath = "nixpkgs=${pkgs.path}";
@@ -163,11 +165,11 @@ in
     ring-road-ci-podman-socket = {
       description = "Start Ring Road CI rootless Podman socket";
       after = [
-        "home-manager-${user}.service"
+        homeManagerService
         "user@${toString uid}.service"
       ];
       requires = [
-        "home-manager-${user}.service"
+        homeManagerService
         "user@${toString uid}.service"
       ];
       serviceConfig = {
