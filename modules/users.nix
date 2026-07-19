@@ -90,6 +90,7 @@
       ./home/lazygit.nix
       ./home/bun.nix
       ./home/agents.nix
+      ./home/push.nix
       ./home/lazyvim
       ./home/systemd-srv.nix
       ./home/tuxedo.nix
