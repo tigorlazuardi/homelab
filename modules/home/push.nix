@@ -9,6 +9,9 @@ let
   home = config.home.homeDirectory;
   configFile = "${home}/.push/config.toml";
   assistantRoot = "${home}/assistant";
+  pushCodex = pkgs.writeShellScriptBin "codex" ''
+    exec ${pkgs.codex}/bin/codex --model gpt-5.6-luna --config model_reasoning_effort=high "$@"
+  '';
   start = pkgs.writeShellScript "push-start" ''
     ${push}/bin/push init ${assistantRoot}
     if ! ${push}/bin/push doctor --config ${configFile}; then
@@ -45,7 +48,7 @@ in
       Restart = "on-failure";
       RestartSec = 10;
       Environment = [
-        "PATH=${push}/bin:/etc/profiles/per-user/homeserver/bin:/run/current-system/sw/bin"
+        "PATH=${pushCodex}/bin:${push}/bin:/etc/profiles/per-user/homeserver/bin:/run/current-system/sw/bin"
       ];
       EnvironmentFile = [ osConfig.sops.secrets."push.env".path ];
     };
