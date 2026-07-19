@@ -42,6 +42,7 @@
     ./webhook.nix
     ./wallrus.nix
     ./herdr-web-tui.nix
+    ./open-design.nix
     ./bareksa-box.nix
     ./strategix-box.nix
     # Native dedicated-user runner for trusted internal ring-road CI. Its rootless

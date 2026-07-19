@@ -23,6 +23,10 @@
     # module (herdrPackage pinned to inputs.herdr, not the module's pkgs.herdr
     # fallback). Own nixpkgs pin like herdr — self-contained build, no follows.
     herdr-web-tui.url = "github:tigorlazuardi/herdr-web-tui";
+    open-design = {
+      url = "github:nexu-io/open-design";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     switchd.url = "github:tigorlazuardi/nixos-switch-approval-telegram-portal";
     nix-index-database = {
       url = "github:nix-community/nix-index-database";

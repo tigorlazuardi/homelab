@@ -97,6 +97,7 @@
       ./home/herdr-claude-retry.nix
       ./home/comma.nix
       ./home/herdr-web-tui.nix
+      ./home/open-design.nix
     ];
     home.username = "homeserver";
     home.homeDirectory = "/home/homeserver";
