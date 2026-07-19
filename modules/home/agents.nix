@@ -13,10 +13,10 @@
   home.packages =
     (with inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}; [
       claude-code
-      codex
       pi
     ])
     ++ (with pkgs; [
+      codex
       # session / runtimes (session persistence itself is herdr — see
       # modules/home/herdr-sessions.nix)
       nodejs
