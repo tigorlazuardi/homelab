@@ -21,6 +21,19 @@ in
 {
   home.packages = [ push ];
 
+  home.file.".push/config.toml" = {
+    force = true;
+    text = ''
+      channel = "telegram"
+      agent = "codex"
+      assistant_root = "${assistantRoot}"
+      audit_log_content = false
+
+      [telegram]
+      allow_user_ids = [0]
+    '';
+  };
+
   # TODO(cutover): After switch, inspect generated push.service and confirm config ownership/readability, `push doctor`, and one Telegram round trip.
   systemd.user.services.push = {
     Unit.Description = "Push personal assistant gateway";
