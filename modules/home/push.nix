@@ -7,7 +7,7 @@
 let
   push = pkgs.callPackage ../../packages/push.nix { };
   home = config.home.homeDirectory;
-  configFile = "${home}/.push/config.toml";
+  configFile = osConfig.sops.templates."push.toml".path;
   assistantRoot = "${home}/assistant";
   pushCodex = pkgs.writeShellScriptBin "codex" ''
     exec ${pkgs.codex}/bin/codex --model gpt-5.6-luna --config model_reasoning_effort=high "$@"
@@ -24,19 +24,6 @@ in
 {
   home.packages = [ push ];
 
-  home.file.".push/config.toml" = {
-    force = true;
-    text = ''
-      channel = "telegram"
-      agent = "codex"
-      assistant_root = "${assistantRoot}"
-      audit_log_content = false
-
-      [telegram]
-      allow_user_ids = [0]
-    '';
-  };
-
   # TODO(cutover): After switch, inspect generated push.service and confirm config ownership/readability, `push doctor`, and one Telegram round trip.
   systemd.user.services.push = {
     Unit.Description = "Push personal assistant gateway";
@@ -50,7 +37,6 @@ in
       Environment = [
         "PATH=${pushCodex}/bin:${push}/bin:/etc/profiles/per-user/homeserver/bin:/run/current-system/sw/bin"
       ];
-      EnvironmentFile = [ osConfig.sops.secrets."push.env".path ];
     };
   };
 }

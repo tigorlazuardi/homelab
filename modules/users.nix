@@ -18,12 +18,29 @@
       key = "";
       owner = "homeserver";
     };
-    "push.env" = {
-      sopsFile = ../secrets/push.env;
-      format = "dotenv";
-      key = "";
-      owner = "homeserver";
+    "push/telegram-bot-token" = {
+      sopsFile = ../secrets/push.yaml;
+      key = "telegram_bot_token";
     };
+    "push/telegram-user-id" = {
+      sopsFile = ../secrets/push.yaml;
+      key = "telegram_user_id";
+    };
+  };
+
+  sops.templates."push.toml" = {
+    owner = "homeserver";
+    mode = "0400";
+    content = ''
+      channel = "telegram"
+      agent = "codex"
+      assistant_root = "/home/homeserver/assistant"
+      audit_log_content = false
+
+      [telegram]
+      bot_token = "${config.sops.placeholder."push/telegram-bot-token"}"
+      allow_user_ids = [${config.sops.placeholder."push/telegram-user-id"}]
+    '';
   };
 
   users.groups = {
