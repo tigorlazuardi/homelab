@@ -11,11 +11,19 @@
   # every claude session's .mcp.json can read ${GRAFANA_SERVICE_ACCOUNT_TOKEN}
   # without the token ever hitting the repo or the nix store. owner=homeserver →
   # the systemd --user service can read it.
-  sops.secrets."grafana-mcp.env" = {
-    sopsFile = ../secrets/grafana-mcp.env;
-    format = "dotenv";
-    key = "";
-    owner = "homeserver";
+  sops.secrets = {
+    "grafana-mcp.env" = {
+      sopsFile = ../secrets/grafana-mcp.env;
+      format = "dotenv";
+      key = "";
+      owner = "homeserver";
+    };
+    "push.env" = {
+      sopsFile = ../secrets/push.env;
+      format = "dotenv";
+      key = "";
+      owner = "homeserver";
+    };
   };
 
   users.groups = {

@@ -1,15 +1,18 @@
 {
   pkgs,
   config,
+  osConfig,
   ...
 }:
 let
   push = pkgs.callPackage ../../packages/push.nix { };
   home = config.home.homeDirectory;
   configFile = "${home}/.push/config.toml";
+  assistantRoot = "${home}/assistant";
   start = pkgs.writeShellScript "push-start" ''
-    if [ ! -f ${configFile} ]; then
-      echo "push: config missing at ${configFile}; unit remains dormant"
+    ${push}/bin/push init ${assistantRoot}
+    if ! ${push}/bin/push doctor --config ${configFile}; then
+      echo "push: setup incomplete; fix config/auth, then restart push.service"
       exit 0
     fi
     exec ${push}/bin/push --config ${configFile}
@@ -28,10 +31,10 @@ in
       ExecStart = start;
       Restart = "on-failure";
       RestartSec = 10;
-      # ponytail: config stays operator-owned so secrets never enter Nix store; add sops only if unattended secret provisioning is required.
       Environment = [
         "PATH=${push}/bin:/etc/profiles/per-user/homeserver/bin:/run/current-system/sw/bin"
       ];
+      EnvironmentFile = [ osConfig.sops.secrets."push.env".path ];
     };
   };
 }
