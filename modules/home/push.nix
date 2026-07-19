@@ -18,6 +18,7 @@ in
 {
   home.packages = [ push ];
 
+  # TODO(cutover): After switch, inspect generated push.service and confirm config ownership/readability, `push doctor`, and one Telegram round trip.
   systemd.user.services.push = {
     Unit.Description = "Push personal assistant gateway";
     Install.WantedBy = [ "default.target" ];
