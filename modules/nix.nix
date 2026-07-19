@@ -4,10 +4,14 @@
     nil
   ];
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    max-jobs = 2;
+    cores = 4;
+  };
 
   nixpkgs.config.allowUnfree = true;
 
