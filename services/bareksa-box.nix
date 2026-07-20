@@ -14,6 +14,7 @@
   localAddress = "10.100.0.2";
 
   slice = "bareksa";
+  uid = 1001;
   officeVpn = "openvpn";
 
   # Office-internal hostnames, reachable over the office VPN (full-tunnel).

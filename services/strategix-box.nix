@@ -23,6 +23,7 @@
   localAddress = "10.101.0.2";
 
   slice = "strategix";
+  uid = 1000;
   officeVpn = "netbird";
 
   # Strategix office-internal hostnames, reachable over the netbird VPN.

@@ -20,6 +20,7 @@
   hostAddress,
   localAddress,
   slice,
+  uid,
   officeVpn, # "openvpn" | "netbird"
   extraHosts ? "",
 }:
@@ -252,6 +253,14 @@ in
           # System-level systemd.user schema (lowercase description/wantedBy/
           # serviceConfig) — NOT the home-manager Unit/Service/Install schema the
           # host uses.
+          #
+          # Linger alone does not reliably start user@.service during nspawn boot.
+          # Require its stable UID from multi-user.target so default.target starts
+          # herdr-server without an SSH login.
+          systemd.targets.multi-user = {
+            after = [ "user@${toString uid}.service" ];
+            requires = [ "user@${toString uid}.service" ];
+          };
           systemd.user.slices.sessions.sliceConfig.CPUWeight = "100";
           systemd.user.services.herdr-server = {
             description = "herdr server (terminal workspace daemon for coding sessions)";
@@ -266,6 +275,8 @@ in
             serviceConfig = {
               Type = "simple";
               WorkingDirectory = "%h";
+              # ponytail: box sessions are systemd-owned; disable snapshot restore until Herdr spawns PTYs headlessly.
+              ExecStartPre = "${pkgs.coreutils}/bin/rm -f %h/.config/herdr/session.json";
               ExecStart = "${herdr}/bin/herdr server";
               Slice = "sessions.slice";
               Restart = "always";
@@ -326,13 +337,20 @@ in
           # escape hatch; ceiling/upgrade path is VM for hostile code.
           fileSystems."/root/proc2" = {
             fsType = "proc";
-            options = [ "nosuid" "nodev" "noexec" "hidepid=2" "subset=pid" ];
+            options = [
+              "nosuid"
+              "nodev"
+              "noexec"
+              "hidepid=2"
+              "subset=pid"
+            ];
           };
 
           # SSH-ready login user `tigor` (the operator), same authorized key set as
           # modules/users.nix.
           users.users.tigor = {
             isNormalUser = true;
+            inherit uid;
             extraGroups = [ "wheel" ];
             shell = pkgs.fish;
             # Run herdr-server + herdr-claude-retry without an active login.
