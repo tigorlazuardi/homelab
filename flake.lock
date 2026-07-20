@@ -136,11 +136,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1783994058,
-        "narHash": "sha256-zq7LVbDwkHrX3omtKsCwwAI8v2ZmCRX+Cd+fTfNuRz4=",
+        "lastModified": 1784127891,
+        "narHash": "sha256-4x2gsgynkMhMKkrH0axfJmHdBfAZa/pvNofqySupPBI=",
         "owner": "tigorlazuardi",
         "repo": "herdr-web-tui",
-        "rev": "ca18f3c9cc1fbd328d31cdfa9b0ba238125043d6",
+        "rev": "aeed1cccde95b7c4bf4ea993b9144c48e163fe9a",
         "type": "github"
       },
       "original": {
