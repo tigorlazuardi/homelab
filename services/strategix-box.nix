@@ -24,6 +24,7 @@
 
   slice = "strategix";
   uid = 1000;
+  podmanSubIdStart = 493216;
   officeVpn = "netbird";
 
   # Strategix office-internal hostnames, reachable over the netbird VPN.

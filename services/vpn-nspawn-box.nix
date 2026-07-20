@@ -21,6 +21,7 @@
   localAddress,
   slice,
   uid,
+  podmanSubIdStart,
   officeVpn, # "openvpn" | "netbird"
   extraHosts ? "",
 }:
@@ -84,6 +85,11 @@ in
         # all land in the system profile via environment.systemPackages.
         herdrUserPath = "/run/wrappers/bin:/run/current-system/sw/bin";
 
+        podmanUid = 1600;
+        podmanSocket = "/run/user/${toString podmanUid}/podman/podman.sock";
+        podmanProxySocket = "/run/podman-api-proxy/podman.sock";
+        podmanHost = "unix://${podmanProxySocket}";
+
         # herdr-claude-retry: auto-resumes rate-limited claude panes. Same npm
         # tarball as the host (modules/home/herdr-claude-retry.nix) — prebuilt
         # dist/, zero runtime deps, run with node. Bump: version + hash.
@@ -122,6 +128,11 @@ in
           # netbird/openvpn = packages only, unconfigured (user supplies creds
           # manually). Coding env: claude-code + pi (llm-agents) + herdr binary,
           # with node/git/gh runtimes. Neovim binary via programs.neovim below.
+          environment.sessionVariables = {
+            CONTAINER_HOST = podmanHost;
+            DOCKER_HOST = podmanHost;
+          };
+
           environment.systemPackages =
             lib.optionals (officeVpn == "openvpn") (
               with pkgs;
@@ -258,8 +269,14 @@ in
           # Require its stable UID from multi-user.target so default.target starts
           # herdr-server without an SSH login.
           systemd.targets.multi-user = {
-            after = [ "user@${toString uid}.service" ];
-            requires = [ "user@${toString uid}.service" ];
+            after = [
+              "user@${toString uid}.service"
+              "user@${toString podmanUid}.service"
+            ];
+            requires = [
+              "user@${toString uid}.service"
+              "user@${toString podmanUid}.service"
+            ];
           };
           systemd.user.slices.sessions.sliceConfig.CPUWeight = "100";
           systemd.user.services.herdr-server = {
@@ -271,6 +288,8 @@ in
               PATH = lib.mkForce herdrUserPath;
               TERM = "xterm-256color";
               COLORTERM = "truecolor";
+              CONTAINER_HOST = podmanHost;
+              DOCKER_HOST = podmanHost;
             };
             serviceConfig = {
               Type = "simple";
@@ -331,6 +350,97 @@ in
             dockerCompat = true;
             defaultNetwork.settings.dns_enabled = true;
           };
+
+          # Dedicated rootless API owner. Fixed UID keeps user@.service and paths
+          # stable; per-guest subordinate ranges are supplied by thin callers.
+          users.groups.podman.gid = podmanUid;
+          users.users.podman = {
+            isNormalUser = true;
+            uid = podmanUid;
+            group = "podman";
+            home = "/home/podman";
+            homeMode = "0700";
+            linger = true;
+            subUidRanges = [
+              {
+                startUid = podmanSubIdStart;
+                count = 65536;
+              }
+            ];
+            subGidRanges = [
+              {
+                startGid = podmanSubIdStart;
+                count = 65536;
+              }
+            ];
+          };
+
+          # Use Podman's packaged user units exclusively. ConditionUser prevents
+          # tigor's manager from opening a second API socket; podman keeps native
+          # rootless graphroot/runroot defaults under its own home/runtime dir.
+          systemd.user.sockets.podman = {
+            unitConfig.ConditionUser = "podman";
+            socketConfig.SocketMode = lib.mkForce "0600";
+          };
+          systemd.user.services.podman = {
+            unitConfig.ConditionUser = "podman";
+            # Global PAM session variables point tigor clients at the proxy. The
+            # daemon must stay local or `podman system service` becomes a remote
+            # client and recurses into its own socket.
+            serviceConfig.UnsetEnvironment = [
+              "CONTAINER_HOST"
+              "DOCKER_HOST"
+            ];
+          };
+
+          # Auditable root relay is needed because neither unprivileged user can
+          # access the other's 0700 runtime dir. Daemon stays podman-owned 0600;
+          # relay listener is tigor-owned 0600. No shared group or socket ACL.
+          systemd.services.podman-api-proxy = {
+            description = "Private tigor proxy to dedicated rootless Podman API";
+            after = [ "user@${toString podmanUid}.service" ];
+            requires = [ "user@${toString podmanUid}.service" ];
+            wantedBy = [ "multi-user.target" ];
+            serviceConfig = {
+              UMask = "0077";
+              RuntimeDirectory = "podman-api-proxy";
+              RuntimeDirectoryMode = "0711";
+              ExecStartPre = pkgs.writeShellScript "wait-for-rootless-podman" ''
+                for _ in $(${pkgs.coreutils}/bin/seq 1 30); do
+                  [ -S ${lib.escapeShellArg podmanSocket} ] && exit 0
+                  ${pkgs.coreutils}/bin/sleep 1
+                done
+                echo "podman-api-proxy: daemon socket unavailable" >&2
+                exit 1
+              '';
+              ExecStart = "${pkgs.socat}/bin/socat UNIX-LISTEN:${podmanProxySocket},fork,unlink-early,mode=0600,user=tigor UNIX-CONNECT:${podmanSocket}";
+              Restart = "on-failure";
+              RestartSec = 5;
+              NoNewPrivileges = true;
+              PrivateTmp = true;
+              ProtectSystem = "strict";
+              ProtectHome = false;
+              InaccessiblePaths = [
+                "/home"
+                "/root"
+              ];
+              ReadOnlyPaths = [ "/run/user" ];
+            };
+          };
+
+          # Dedicated user's full workload (API + containers) stays inside bounds.
+          systemd.slices."user-${toString podmanUid}".sliceConfig = {
+            CPUQuota = "200%";
+            MemoryMax = "4G";
+            TasksMax = 2048;
+          };
+
+          assertions = [
+            {
+              assertion = uid != podmanUid && podmanSubIdStart > 65535;
+              message = "${name}: podman UID must differ from tigor and subordinate IDs must not overlap system IDs";
+            }
+          ];
 
           # ponytail: systemd-nspawn overmounts /proc, so kernel mount_too_revealing
           # blocks rootless crun. Fully exposed secondary guest procfs is compatibility

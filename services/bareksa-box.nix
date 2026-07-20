@@ -15,6 +15,7 @@
 
   slice = "bareksa";
   uid = 1001;
+  podmanSubIdStart = 427680;
   officeVpn = "openvpn";
 
   # Office-internal hostnames, reachable over the office VPN (full-tunnel).
