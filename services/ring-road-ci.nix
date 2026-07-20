@@ -133,6 +133,10 @@ in
       ProtectHome = false;
       ReadWritePaths = [ "/home/${user}" ];
       InaccessiblePaths = productionPaths;
+      # PrivateDevices hides the host TUN node required by pasta. Expose only
+      # that character device; all other host devices remain isolated.
+      BindPaths = [ "/dev/net/tun" ];
+      DeviceAllow = [ "char-net-tun rw" ];
       # Rootless Podman creates nested namespaces and executes NixOS capability
       # wrappers (newuidmap/newgidmap) for subordinate-ID mappings. Runner module
       # hardening blocks both paths by default; dedicated CI user, sandbox paths,
