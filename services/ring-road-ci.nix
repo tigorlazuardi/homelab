@@ -125,8 +125,6 @@ in
       Environment = [
         "HOME=/home/${user}"
         "XDG_RUNTIME_DIR=${runtimeDir}"
-        "DOCKER_HOST=${podmanSocket}"
-        "CONTAINER_HOST=${podmanSocket}"
         "NIX_PATH=${nixPath}"
       ];
       # Shared user slice keeps runner, API daemon, and container descendants
@@ -135,19 +133,24 @@ in
       ProtectHome = false;
       ReadWritePaths = [ "/home/${user}" ];
       InaccessiblePaths = productionPaths;
-      # Workflows run rootless containers, including custom networks and named
-      # volumes. Keep runner unprivileged while allowing required namespaces and
-      # delegated cgroups below its dedicated user slice.
+      # Rootless Podman creates nested namespaces and executes NixOS capability
+      # wrappers (newuidmap/newgidmap) for subordinate-ID mappings. Runner module
+      # hardening blocks both paths by default; dedicated CI user, sandbox paths,
+      # minimal capability bound, and trust ceiling remain security boundaries.
       PrivateUsers = false;
-      ProtectControlGroups = false;
-      RestrictNamespaces = [
-        "user"
-        "mnt"
-        "pid"
-        "ipc"
-        "uts"
-        "cgroup"
+      NoNewPrivileges = false;
+      RestrictSUIDSGID = false;
+      RestrictNamespaces = false;
+      # crun must set the hostname inside each container's nested UTS namespace.
+      # ProtectHostname installs a systemd restriction inherited by Runner.Worker
+      # descendants and returns EPERM even after the explicit seccomp deny is gone.
+      ProtectHostname = false;
+      CapabilityBoundingSet = lib.mkForce [
+        "CAP_SETUID"
+        "CAP_SETGID"
+        "CAP_SETPCAP"
       ];
+      ProtectControlGroups = false;
       SystemCallFilter = lib.mkForce [
         "~@clock"
         "~@cpu-emulation"
@@ -155,8 +158,6 @@ in
         "~@obsolete"
         "~@raw-io"
         "~@reboot"
-        "~setdomainname"
-        "~sethostname"
       ];
     };
   };
