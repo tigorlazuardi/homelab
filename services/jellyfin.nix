@@ -11,6 +11,7 @@
 # abc uses resolves and setgroups succeeds. Trade-off: jellyfin writes as a
 # mapped subuid (not srv) — fine, /config is its own and /media is read-only +
 # world-readable. Intel Quick Sync HW transcode via /dev/dri/renderD128 (see extraContainerConfig).
+{ pkgs, ... }:
 {
   homelab.containers.jellyfin = {
     image = "lscr.io/linuxserver/jellyfin:latest";
@@ -25,6 +26,10 @@
     # since jellyfin is the only member.
     serviceConfig = {
       Slice = "media-interactive.slice";
+      # ponytail: user units cannot depend on system mount units; skip startup
+      # rather than bind the pre-mount directory. System hook below handles the
+      # opposite race when Jellyfin was already active before wolf appeared.
+      ExecCondition = "${pkgs.util-linux}/bin/mountpoint --quiet /var/mnt/wolf";
     };
     # HW transcoding via Intel Quick Sync (UHD 730). renderD128 is world-rw
     # (666), same node immich uses — no render-group mapping needed under the
@@ -68,5 +73,31 @@
       "d /var/mnt/state/jellyfin/config 0700 166535 166535 -"
       "d /var/mnt/state/jellyfin/cache 0700 166535 166535 -"
     ];
+  };
+
+  # Bridge system mount lifecycle → srv user manager. A rootless container keeps
+  # its original bind-mount inode when wolf mounts later. `start` is idempotent:
+  # it starts Jellyfin if ExecCondition skipped earlier, while an already-active
+  # unit is restarted first so Podman recreates the bind mount.
+  systemd.services.jellyfin-refresh-wolf-mount = {
+    description = "Refresh Jellyfin bind mounts after wolf mounts";
+    requires = [
+      "var-mnt-wolf.mount"
+      "user@1001.service"
+    ];
+    after = [
+      "var-mnt-wolf.mount"
+      "user@1001.service"
+    ];
+    wantedBy = [ "var-mnt-wolf.mount" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "srv";
+      Environment = "XDG_RUNTIME_DIR=/run/user/1001";
+      ExecStart = pkgs.writeShellScript "refresh-jellyfin-wolf-mount" ''
+        ${pkgs.systemd}/bin/systemctl --user try-restart jellyfin.service
+        ${pkgs.systemd}/bin/systemctl --user start jellyfin.service
+      '';
+    };
   };
 }
