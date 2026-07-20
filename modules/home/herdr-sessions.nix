@@ -128,6 +128,7 @@ let
       name = "Herdr Sheepdog";
       dir = "projects/herdr-sheepdog";
       harness = "pi";
+      enable = false;
     } # local git init, no remote
     {
       name = "Herdr Web TUI";
@@ -147,6 +148,11 @@ let
       harness = "pi";
       repo = "git@github.com:tigorlazuardi/nixos-switch-approval-telegram-portal.git";
     }
+    {
+      name = "Pi Herdr Sudo Task";
+      dir = "projects/pi-herdr-sudo-task";
+      harness = "pi";
+    }
     # pi's own config dir (~/.pi) — manage pi config with pi itself. Local, no remote.
     {
       name = "Pi Configuration";
@@ -157,6 +163,7 @@ let
       name = "Pi Sheepdog";
       dir = "projects/pi-sheepdog";
       harness = "pi";
+      enable = false;
     } # local git init, no remote
     {
       name = "Nix LLM Agents Config";
