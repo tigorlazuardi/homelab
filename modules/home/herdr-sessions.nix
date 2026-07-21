@@ -219,6 +219,29 @@ let
   # pair of scripts below is the ExecStartPre/ExecStart body, parameterized by
   # positional args so one script serves every session.
 
+  # Prepare a clean canonical daemon: kill same-user daemons not owned by this
+  # unit, then delete herdr's stale workspace snapshot. Managed session units
+  # recreate every enabled workspace and agent from their declared argv.
+  prepareServer = pkgs.writeShellScript "herdr-prepare-server" ''
+    pgrep=${pkgs.procps}/bin/pgrep
+    find_daemons() { "$pgrep" -u "$UID" -f '(^|/)herdr server$' || true; }
+    pids=$(find_daemons)
+    if [ -n "$pids" ]; then
+      echo "stopping stray herdr daemon(s): $pids" >&2
+      kill $pids 2>/dev/null || true
+      for _ in $(seq 1 20); do
+        pids=$(find_daemons)
+        [ -z "$pids" ] && break
+        sleep 0.1
+      done
+      if [ -n "$pids" ]; then
+        echo "killing unresponsive herdr daemon(s): $pids" >&2
+        kill -KILL $pids 2>/dev/null || true
+      fi
+    fi
+    ${pkgs.coreutils}/bin/rm -f "$HOME/.config/herdr/session.json"
+  '';
+
   # Shared daemon-ready wait — `status server` exits 0 even when down, so parse it.
   waitDaemon = ''
     up() { herdr status server 2>/dev/null | grep -q '^status: running'; }
@@ -317,7 +340,12 @@ in
     # The daemon. Every pane (all claude sessions) is a child of this unit, so
     # Slice/env here apply to all of them — one knob for the whole coding tier.
     herdr-server = {
-      Unit.Description = "herdr server (terminal workspace daemon for claude sessions)";
+      Unit = {
+        Description = "herdr server (terminal workspace daemon for claude sessions)";
+        # PartOf propagates daemon restarts downward but does not start inactive
+        # dependents. Wants makes every server start launch all managed sessions.
+        Wants = map (s: "herdr-session-${slug s.name}.service") enabledSessions;
+      };
       Install.WantedBy = [ "default.target" ];
       Service = {
         Type = "simple";
@@ -330,7 +358,9 @@ in
           "COLORTERM=truecolor"
         ];
         EnvironmentFile = [ grafanaMcpEnvFile ];
+        ExecStartPre = prepareServer;
         ExecStart = "${herdr}/bin/herdr server";
+        KillMode = "control-group";
         Slice = "sessions.slice";
         Restart = "always";
         RestartSec = 5;
